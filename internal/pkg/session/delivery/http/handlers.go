@@ -3,6 +3,7 @@ package delivery
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 	"yula/internal/codes"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
@@ -24,6 +25,7 @@ func NewSessionHandler(sessionUsecase session.SessionUsecase, userUsecase user.U
 
 func (sh *SessionHandler) Routing(r *mux.Router) {
 	r.HandleFunc("/signin", sh.SignInHandler).Methods(http.MethodPost)
+	r.HandleFunc("/logout", sh.LogOutHandler).Methods(http.MethodPost)
 }
 
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +91,46 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Add("Content-Type", "application/json")
 
-	response := models.HttpError{Code: http.StatusOK, Message: "successful signin"}
+	response := models.HttpError{Code: http.StatusOK, Message: "signin successfully"}
+	js, _ := json.Marshal(response)
+
+	w.Write(js)
+}
+
+func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "application/json")
+
+		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
+		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
+		return
+	}
+
+	err = sh.sessionUsecase.Delete(session.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "application/json")
+
+		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.InternalError))
+		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
+		return
+	}
+
+	session.Expires = time.Now().Add(-time.Minute)
+	http.SetCookie(w, session)
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Add("Content-Type", "application/json")
+
+	response := models.HttpError{Code: http.StatusOK, Message: "logout successfully"}
 	js, _ := json.Marshal(response)
 
 	w.Write(js)
