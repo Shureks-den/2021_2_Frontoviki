@@ -2,8 +2,8 @@ package delivery
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"yula/internal/codes"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
 
@@ -21,7 +21,7 @@ func NewUserHandler(userUse user.UserUsecase) *UserHandler {
 	}
 }
 
-func (uh *UserHandler) Configurate(r *mux.Router) {
+func (uh *UserHandler) Routing(r *mux.Router) {
 	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost)
 }
 
@@ -30,28 +30,35 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&signUpUser)
 	if err != nil {
-		status := models.StatusByCode(models.BadRequest)
-		status.Message = err.Error()
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "application/json")
 
-		w.WriteHeader(status.HttpCode)
+		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
+		js, _ := json.Marshal(response)
 
-		jsonStatus := models.ToJson(status)
-		w.Write(jsonStatus)
+		w.Write(js)
 		return
 	}
 
-	fmt.Printf("User %s got\n", signUpUser.Email)
+	user, servErr := uh.userUse.Create(&signUpUser)
+	if servErr != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "application/json")
 
-	user, status := uh.userUse.Create(&signUpUser)
-	if status != models.StatusByCode(models.Created) {
-		w.WriteHeader(status.HttpCode)
-		jsonStatus := models.ToJson(status)
-		w.Write(jsonStatus)
+		httpStat := codes.ServerErrorToHttpStatus(servErr)
+		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
 		return
 	}
 
-	fmt.Printf("User %s transformed\n", user.Email)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Add("Content-Type", "application/json")
 
-	w.WriteHeader(status.HttpCode)
-	w.Write(models.ToJson(status))
+	response := models.HttpUser{Code: http.StatusCreated, Message: "user created successfully",
+		Body: models.HttpBodyUser{User: user.RemovePassword()}}
+	js, _ := json.Marshal(response)
+
+	w.Write(js)
 }

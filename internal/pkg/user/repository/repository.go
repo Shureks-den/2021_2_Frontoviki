@@ -1,5 +1,6 @@
 package repository
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -67,3 +68,4 @@ func (ur *UserRepository) PrintAllUsers() {
 			i, usr.Id, usr.Username, usr.Email, usr.Password, usr.CreatedAt)
 	}
 }
+*/

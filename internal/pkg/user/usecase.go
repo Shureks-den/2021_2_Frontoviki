@@ -1,11 +1,12 @@
 package user
 
 import (
+	"yula/internal/codes"
 	"yula/internal/models"
 )
 
 // определяем интерфейс связи между deliver и repository
 type UserUsecase interface {
-	Create(user *models.UserSignUp) (*models.UserData, *models.Status)
-	GetByEmail(email string) (*models.UserData, *models.Status)
+	Create(user *models.UserSignUp) (*models.UserData, *codes.ServerError)
+	GetByEmail(email string) (*models.UserData, *codes.ServerError)
 }

@@ -2,12 +2,10 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type UserData struct {
-	Id        uuid.UUID `json:"id"`
+	Id        int64     `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
@@ -20,9 +18,22 @@ type UserSignIn struct {
 }
 
 type UserSignUp struct {
-	Id        uuid.UUID `json:"-"`
+	Id        int64     `json:"-"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"-"`
+}
+
+type UserWithoutPassword struct {
+	Id        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (user *UserData) RemovePassword() UserWithoutPassword {
+	return UserWithoutPassword{
+		Id: user.Id, Username: user.Username, Email: user.Email, CreatedAt: user.CreatedAt,
+	}
 }
