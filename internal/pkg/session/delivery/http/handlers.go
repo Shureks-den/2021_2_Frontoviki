@@ -34,8 +34,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&signInUser)
 	if err != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
 		js, _ := json.Marshal(response)
@@ -46,8 +46,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	user, serverErr := sh.userUsecase.GetByEmail(signInUser.Email)
 	if serverErr != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(serverErr)
 		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
@@ -59,8 +59,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	serverErr = sh.userUsecase.CheckPassword(user, signInUser.Password)
 	if serverErr != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(serverErr)
 		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
@@ -72,8 +72,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	userSession, err := sh.sessionUsecase.Create(user.Id)
 	if err != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusInternalServerError, Message: "something went wrong"}
 		js, _ := json.Marshal(response)
@@ -88,8 +88,9 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		Expires:  userSession.ExpiresAt,
 		HttpOnly: true,
 	})
-	w.WriteHeader(http.StatusOK)
+
 	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpError{Code: http.StatusOK, Message: "signin successfully"}
 	js, _ := json.Marshal(response)
@@ -100,8 +101,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("session_id")
 	if err != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
 		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
@@ -113,8 +114,8 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = sh.sessionUsecase.Delete(session.Value)
 	if err != nil {
-		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.InternalError))
 		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
@@ -127,8 +128,8 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 	session.Expires = time.Now().Add(-time.Minute)
 	http.SetCookie(w, session)
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpError{Code: http.StatusOK, Message: "logout successfully"}
 	js, _ := json.Marshal(response)

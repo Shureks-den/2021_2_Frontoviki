@@ -5,3 +5,11 @@ CREATE TABLE IF NOT EXISTS users (
     password text NOT NULL,
     created_at TIMESTAMP NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS profiles (
+    user_id INT NOT NULL PRIMARY KEY,
+    name text NOT NULL DEFAULT '',
+    surname text NOT NULL DEFAULT '',
+    image text NOT NULL DEFAULT '',
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);

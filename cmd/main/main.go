@@ -11,6 +11,7 @@ import (
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
 
+	"yula/internal/pkg/middleware"
 	sessHttp "yula/internal/pkg/session/delivery/http"
 	sessRep "yula/internal/pkg/session/repository"
 	sessUse "yula/internal/pkg/session/usecase"
@@ -51,7 +52,9 @@ func main() {
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 
-	uh.Routing(r)
+	sm := middleware.NewSessionMiddleware(su)
+
+	uh.Routing(r, sm)
 	sh.Routing(r)
 
 	fmt.Println("start serving :8080")

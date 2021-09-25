@@ -37,3 +37,11 @@ func (user *UserData) RemovePassword() UserWithoutPassword {
 		Id: user.Id, Username: user.Username, Email: user.Email, CreatedAt: user.CreatedAt,
 	}
 }
+
+type Profile struct {
+	Id      int64  `json:"id"`
+	UserId  int64  `json:"user_id"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Image   string `json:"image"`
+}
