@@ -11,6 +11,10 @@ import (
 	"yula/internal/pkg/user/repository"
 	"yula/internal/pkg/user/usecase"
 
+	sessHttp "yula/internal/pkg/session/delivery/http"
+	sessRep "yula/internal/pkg/session/repository"
+	sessUse "yula/internal/pkg/session/usecase"
+
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -42,7 +46,12 @@ func main() {
 	uu := usecase.NewUserUsecase(ur)
 	uh := delivery.NewUserHandler(uu)
 
+	sr := sessRep.NewSessionRepository()
+	su := sessUse.NewSessionUsecase(sr)
+	sh := sessHttp.NewSessionHandler(su, uu)
+
 	uh.Routing(r)
+	sh.Routing(r)
 
 	fmt.Println("start serving :8080")
 

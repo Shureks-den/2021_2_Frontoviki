@@ -65,3 +65,11 @@ func (uu *UserUsecase) GetByEmail(email string) (*models.UserData, *codes.Server
 		return nil, codes.NewServerError(codes.UnexpectedError)
 	}
 }
+
+func (uu *UserUsecase) CheckPassword(user *models.UserData, gettedPassword string) *codes.ServerError {
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(gettedPassword))
+	if err != nil {
+		return codes.NewServerError(codes.Unauthorized)
+	}
+	return nil
+}

@@ -7,6 +7,7 @@ const (
 	UserAlreadyExist
 	UnexpectedError
 	InternalError
+	Unauthorized
 )
 
 type ServerError struct {
@@ -19,6 +20,7 @@ var StatusMap = map[ServerErrorType]*ServerError{
 	UserAlreadyExist: {ErrorCode: UserAlreadyExist, Message: "user already exist"},
 	UnexpectedError:  {ErrorCode: UnexpectedError, Message: "unexpected error"},
 	InternalError:    {ErrorCode: InternalError, Message: "internal error"},
+	Unauthorized:     {ErrorCode: Unauthorized, Message: "no rights to access this resource"},
 }
 
 func NewServerError(error ServerErrorType) *ServerError {
