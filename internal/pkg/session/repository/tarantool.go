@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package repository
 
 /*
@@ -8,10 +9,17 @@ import (
 	"sync"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
+=======
+package main
+
+import (
+	"fmt"
+>>>>>>> 882a110 (tarantool init)
 
 	"github.com/tarantool/go-tarantool"
 )
 
+<<<<<<< HEAD
 type SessionRepository struct {
 	pool          []*tarantool.Connection
 	m             sync.RWMutex
@@ -37,11 +45,17 @@ func NewSessionRepository() session.SessionRepository {
 
 func (sr *SessionRepository) AddNewConnectionToPool() error {
 	conn, err := tarantool.Connect("localhost:3301", tarantool.Opts{ //  192.168.1.9
+=======
+func main() {
+
+	conn, err := tarantool.Connect("158.255.163.135:3301", tarantool.Opts{ //  158.255.163.135
+>>>>>>> 882a110 (tarantool init)
 		User: "admin",
 		Pass: "pass",
 	})
 
 	if err != nil {
+<<<<<<< HEAD
 		return errors.New("connect error")
 	}
 
@@ -95,3 +109,24 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	return nil, nil
 }
 */
+=======
+		fmt.Println("Connection refused")
+		return
+	}
+
+	defer conn.Close()
+
+	resp, err := conn.Insert("tester", []interface{}{5, "SANYA))", 2001})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	code := resp.Code
+	data := resp.Data
+	fmt.Println(code)
+	fmt.Println(data)
+
+	// Your logic for interacting with the database
+}
+>>>>>>> 882a110 (tarantool init)
