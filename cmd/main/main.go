@@ -7,9 +7,9 @@ import (
 	"os"
 	"yula/internal/config"
 	"yula/internal/database"
-	delivery "yula/internal/pkg/user/delivery/http"
-	"yula/internal/pkg/user/repository"
-	"yula/internal/pkg/user/usecase"
+	userHttp "yula/internal/pkg/user/delivery/http"
+	userRep "yula/internal/pkg/user/repository"
+	userUse "yula/internal/pkg/user/usecase"
 
 	sessHttp "yula/internal/pkg/session/delivery/http"
 	sessRep "yula/internal/pkg/session/repository"
@@ -42,12 +42,13 @@ func main() {
 
 	r := mux.NewRouter()
 
-	ur := repository.NewUserRepository(postgres.GetDbPool())
-	uu := usecase.NewUserUsecase(ur)
-	uh := delivery.NewUserHandler(uu)
-
+	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository()
+
+	uu := userUse.NewUserUsecase(ur)
 	su := sessUse.NewSessionUsecase(sr)
+
+	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 
 	uh.Routing(r)

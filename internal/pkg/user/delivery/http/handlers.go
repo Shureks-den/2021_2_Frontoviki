@@ -5,19 +5,21 @@ import (
 	"net/http"
 	"yula/internal/codes"
 	"yula/internal/models"
+	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
 	"github.com/gorilla/mux"
 )
 
 type UserHandler struct {
-	userUse user.UserUsecase
-	// сессии ?
+	userUsecase    user.UserUsecase
+	sessionUsecase session.SessionUsecase
 }
 
-func NewUserHandler(userUse user.UserUsecase) *UserHandler {
+func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.SessionUsecase) *UserHandler {
 	return &UserHandler{
-		userUse: userUse,
+		userUsecase:    userUsecase,
+		sessionUsecase: sessionUsecase,
 	}
 }
 
@@ -40,7 +42,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, servErr := uh.userUse.Create(&signUpUser)
+	user, servErr := uh.userUsecase.Create(&signUpUser)
 	if servErr != nil {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Add("Content-Type", "application/json")
@@ -52,6 +54,25 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(js)
 		return
 	}
+
+	userSession, err := uh.sessionUsecase.Create(user.Id)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Add("Content-Type", "application/json")
+
+		response := models.HttpError{Code: http.StatusInternalServerError, Message: "something went wrong"}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    userSession.Value,
+		Expires:  userSession.ExpiresAt,
+		HttpOnly: true,
+	})
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-Type", "application/json")
