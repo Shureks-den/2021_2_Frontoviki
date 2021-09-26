@@ -37,10 +37,11 @@ func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
 
 func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.DatabaseError) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, username, email, password, created_at FROM users WHERE email = $1", email)
+		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE email = $1", email)
 
 	user := models.UserData{}
-	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt); err != nil {
+	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
+		&user.Name, &user.Surname, &user.Image); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
 			return nil, codes.NewDatabaseError(codes.EmptyRow)
@@ -53,10 +54,11 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.
 
 func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.DatabaseError) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, username, email, password, created_at FROM users WHERE id = $1", userId)
+		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE id = $1", userId)
 
 	user := models.UserData{}
-	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt); err != nil {
+	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
+		&user.Name, &user.Surname, &user.Image); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
 			return nil, codes.NewDatabaseError(codes.EmptyRow)
@@ -65,4 +67,20 @@ func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.Dat
 	}
 
 	return &user, nil
+}
+
+func (ur *UserRepository) Update(user *models.UserData) *codes.DatabaseError {
+	res, err := ur.pool.Exec(context.Background(),
+		"UPDATE users SET username = $2, email = $3, password = $4, name = $5, surname = $6, image = $7 WHERE id = $1",
+		user.Id, user.Username, user.Email, user.Password, user.Name, user.Surname, user.Image)
+
+	if err != nil {
+		return codes.NewDatabaseError(codes.UnableToUpdate)
+	}
+
+	if count := res.RowsAffected(); count != 1 {
+		return codes.NewDatabaseError(codes.NotUpdated)
+	}
+
+	return nil
 }

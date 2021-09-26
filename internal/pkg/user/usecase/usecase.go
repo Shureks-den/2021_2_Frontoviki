@@ -88,3 +88,45 @@ func (uu *UserUsecase) GetById(user_id int64) (*models.Profile, *codes.ServerErr
 		return nil, codes.NewServerError(codes.UnexpectedError)
 	}
 }
+
+func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, *codes.ServerError) {
+	userActual, err := uu.userRepo.SelectById(userId)
+	if err != nil {
+		return nil, codes.NewServerError(codes.UserNotExist)
+	}
+
+	if userNew.Email != "" && userNew.Email != userActual.Email {
+		// проверка на уникальность новой почты
+		serverErr := uu.CheckEmail(userNew.Email)
+		if serverErr != nil {
+			return nil, serverErr
+		}
+	}
+
+	userNew.Id = userId
+	userNew.Password = userActual.Password
+	userNew.CreatedAt = userActual.CreatedAt
+	userNew.Image = userActual.Image // ??? что делать если и фото будет менять?
+
+	err = uu.userRepo.Update(userNew)
+	if err != nil {
+		return nil, codes.NewServerError(codes.NotFound)
+	}
+
+	return userNew.ToProfile(), nil
+}
+
+func (uu *UserUsecase) CheckEmail(email string) *codes.ServerError {
+	_, err := uu.userRepo.SelectByEmail(email)
+
+	switch err {
+	case nil:
+		return codes.NewServerError(codes.UserAlreadyExist)
+
+	case codes.NewDatabaseError(codes.EmptyRow):
+		return nil
+
+	default:
+		return codes.NewServerError(codes.InternalError)
+	}
+}

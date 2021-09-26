@@ -28,6 +28,7 @@ func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.Session
 func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost)
 	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet)
+	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost)
 }
 
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +112,48 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile opened",
+		Body: models.HttpBodyProfile{Profile: *profile}}
+	js, _ := json.Marshal(response)
+
+	w.Write(js)
+}
+
+func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(middleware.ContextUserId).(int64)
+
+	log.Printf("User %d opened profile and edit", userId)
+
+	userNew := models.UserData{}
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&userNew)
+	if err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
+		return
+	}
+
+	profile, serverErr := uh.userUsecase.UpdateProfile(userId, &userNew)
+	if serverErr != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		httpStat := codes.ServerErrorToHttpStatus(serverErr)
+		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
+		js, _ := json.Marshal(response)
+
+		w.Write(js)
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile updated",
 		Body: models.HttpBodyProfile{Profile: *profile}}
 	js, _ := json.Marshal(response)
 

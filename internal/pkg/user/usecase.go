@@ -12,5 +12,6 @@ type UserUsecase interface {
 	CheckPassword(user *models.UserData, gettedPassword string) *codes.ServerError
 
 	GetById(id int64) (*models.Profile, *codes.ServerError)
-	//UpdateProfile(user *models.Profile) (*models.Profile, *codes.ServerError)
+	UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, *codes.ServerError)
+	CheckEmail(email string) *codes.ServerError
 }

@@ -4,6 +4,8 @@ type DatabaseErrorType uint8
 
 const (
 	EmptyRow DatabaseErrorType = iota + 1
+	UnableToUpdate
+	NotUpdated
 	UnexpectedDbError
 )
 

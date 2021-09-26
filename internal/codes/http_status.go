@@ -12,6 +12,7 @@ var httpStatusMap = map[ServerErrorType]*HttpStatus{
 	UserNotExist:     {Code: http.StatusNotFound, Message: "user with this email not exist"},
 	InternalError:    {Code: http.StatusInternalServerError, Message: "something went wrong"},
 	Unauthorized:     {Code: http.StatusUnauthorized, Message: "no rights to access this resource"},
+	NotFound:         {Code: http.StatusNotFound, Message: "resource can not be found"},
 }
 
 func ServerErrorToHttpStatus(error *ServerError) *HttpStatus {

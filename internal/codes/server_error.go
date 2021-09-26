@@ -8,6 +8,7 @@ const (
 	UnexpectedError
 	InternalError
 	Unauthorized
+	NotFound
 )
 
 type ServerError struct {
@@ -21,6 +22,7 @@ var StatusMap = map[ServerErrorType]*ServerError{
 	UnexpectedError:  {ErrorCode: UnexpectedError, Message: "unexpected error"},
 	InternalError:    {ErrorCode: InternalError, Message: "internal error"},
 	Unauthorized:     {ErrorCode: Unauthorized, Message: "no rights to access this resource"},
+	NotFound:         {ErrorCode: NotFound, Message: "resource can not be found"},
 }
 
 func NewServerError(error ServerErrorType) *ServerError {
