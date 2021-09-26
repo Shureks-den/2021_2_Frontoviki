@@ -43,12 +43,8 @@ func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
 func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.DatabaseError) {
 	ur.m.RLock()
 	row := ur.pool.QueryRow(context.Background(),
-<<<<<<< HEAD
-		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE email = $1", email)
-=======
 		"SELECT id, username, email, password, created_at FROM users WHERE email = $1", email)
 	ur.m.RUnlock()
->>>>>>> 70c5d36 (tarantool intergated)
 
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
@@ -66,12 +62,8 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.
 func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.DatabaseError) {
 	ur.m.RLock()
 	row := ur.pool.QueryRow(context.Background(),
-<<<<<<< HEAD
-		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE id = $1", userId)
-=======
 		"SELECT id, username, email, password, created_at FROM users WHERE id = $1", userId)
 	ur.m.RUnlock()
->>>>>>> 70c5d36 (tarantool intergated)
 
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
