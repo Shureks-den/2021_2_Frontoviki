@@ -28,7 +28,10 @@ func init() {
 }
 
 func main() {
+<<<<<<< HEAD
 
+=======
+>>>>>>> fix bugs
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {

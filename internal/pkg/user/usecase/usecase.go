@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"mime/multipart"
 	"time"
 	"yula/internal/codes"
 	"yula/internal/models"
@@ -129,4 +130,8 @@ func (uu *UserUsecase) CheckEmail(email string) *codes.ServerError {
 	default:
 		return codes.NewServerError(codes.InternalError)
 	}
+}
+
+func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) *codes.ServerError {
+	return nil
 }

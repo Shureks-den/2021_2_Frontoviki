@@ -9,6 +9,7 @@ const (
 	InternalError
 	Unauthorized
 	NotFound
+	UnableToUpload
 )
 
 type ServerError struct {
@@ -23,6 +24,7 @@ var StatusMap = map[ServerErrorType]*ServerError{
 	InternalError:    {ErrorCode: InternalError, Message: "internal error"},
 	Unauthorized:     {ErrorCode: Unauthorized, Message: "no rights to access this resource"},
 	NotFound:         {ErrorCode: NotFound, Message: "resource can not be found"},
+	UnableToUpload:   {ErrorCode: UnableToUpload, Message: "unable to upload"},
 }
 
 func NewServerError(error ServerErrorType) *ServerError {
