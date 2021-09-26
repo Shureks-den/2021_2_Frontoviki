@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"yula/internal/config"
 	"yula/internal/database"
 	userHttp "yula/internal/pkg/user/delivery/http"
@@ -29,11 +28,6 @@ func init() {
 
 func main() {
 
-	DatabaseUrl, exists := os.LookupEnv("DATABASE_URL")
-	if exists {
-		fmt.Println(DatabaseUrl)
-	}
-
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
@@ -43,10 +37,18 @@ func main() {
 
 	r := mux.NewRouter()
 
+<<<<<<< HEAD
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository()
 
 	uu := userUse.NewUserUsecase(ur)
+=======
+	ur := repository.NewUserRepository(postgres.GetDbPool())
+	uu := usecase.NewUserUsecase(ur)
+	uh := delivery.NewUserHandler(uu)
+
+	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
+>>>>>>> 70c5d36 (tarantool intergated)
 	su := sessUse.NewSessionUsecase(sr)
 
 	uh := userHttp.NewUserHandler(uu, su)
