@@ -1,6 +1,6 @@
 fiber = require('fiber')
 expd = require('expirationd')
-box.cfg{listen = 3301}
+box.cfg{listen=3302}
 box.once("sessions", function()
     s = box.schema.space.create('sessions')
     s:format({

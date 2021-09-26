@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 	"yula/internal/codes"
@@ -114,6 +115,7 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = sh.sessionUsecase.Delete(session.Value)
 	if err != nil {
+		log.Printf("Logout 2 : %s\n", err.Error())
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 

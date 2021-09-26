@@ -24,3 +24,8 @@
 
 # Environment
 .env
+
+
+# Tarantool logs
+*.snap
+*.xlog

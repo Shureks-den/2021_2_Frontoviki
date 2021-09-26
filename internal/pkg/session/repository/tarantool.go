@@ -80,7 +80,7 @@ func (sr *SessionRepository) Delete(sess *models.Session) error {
 		return errors.New("delete error")
 	}
 
-	return errors.New("error")
+	return nil
 }
 
 func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
@@ -91,7 +91,7 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	sr.m.RUnlock()
 
 	if len(resp.Data) == 0 {
-		return nil, nil
+		return nil, errors.New("empty_row")
 	}
 
 	sess := models.Session{

@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"yula/internal/config"
 	"yula/internal/database"
-	delivery "yula/internal/pkg/user/delivery/http"
 	userHttp "yula/internal/pkg/user/delivery/http"
-	"yula/internal/pkg/user/repository"
-	"yula/internal/pkg/user/usecase"
+	userRep "yula/internal/pkg/user/repository"
+	userUse "yula/internal/pkg/user/usecase"
 
 	"yula/internal/pkg/middleware"
 	sessHttp "yula/internal/pkg/session/delivery/http"
@@ -28,24 +27,21 @@ func init() {
 }
 
 func main() {
-<<<<<<< HEAD
-
-=======
->>>>>>> fix bugs
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	defer postgres.Close()
 
 	r := mux.NewRouter()
 
-	ur := repository.NewUserRepository(postgres.GetDbPool())
-	uu := usecase.NewUserUsecase(ur)
-	uh := delivery.NewUserHandler(uu)
-
+	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
+	//&cnfg.TarantoolCfg
+
+	uu := userUse.NewUserUsecase(ur)
 	su := sessUse.NewSessionUsecase(sr)
 
 	uh := userHttp.NewUserHandler(uu, su)

@@ -3,8 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 type Postgres struct {
@@ -12,6 +14,9 @@ type Postgres struct {
 }
 
 func NewPostgres(connString string) (*Postgres, error) {
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
 	pool, err := pgxpool.Connect(context.Background(), connString)
 	if err != nil {
 		fmt.Println(err.Error())

@@ -29,9 +29,10 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
-			log.Printf("error: %v\n", err.Error())
+			log.Printf("error middleware 1: %v\n", err.Error())
 
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 			w.WriteHeader(http.StatusOK)
 
 			httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
@@ -44,9 +45,10 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 
 		session, err := sm.sessionUsecase.Check(cookie.Value)
 		if err != nil {
-			log.Printf("error: %v\n", err.Error())
+			log.Printf("error middleware 2: %v\n", err.Error())
 
 			w.Header().Set("Content-Type", "application/json")
+			w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 			w.WriteHeader(http.StatusOK)
 
 			httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))

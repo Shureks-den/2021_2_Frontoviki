@@ -25,7 +25,7 @@ func NewConfig() *Config {
 	return &Config{
 		DbConfig: DatabaseConfig{DatabaseUrl: GetEnv("DATABASE_URL", "")},
 		TarantoolCfg: TarantoolConfig{
-			TarantoolServerAddress: GetEnv("TARANTOOL_ADDRESS", "localhost:3301"),
+			TarantoolServerAddress: GetEnv("TARANTOOL_ADDRESS", "localhost:3302"),
 			TarantoolOpts: TarantoolOptions{
 				User: GetEnv("TARANTOOL_USER", "admin"),
 				Pass: GetEnv("TARANTOOL_PASS", "pass"),
