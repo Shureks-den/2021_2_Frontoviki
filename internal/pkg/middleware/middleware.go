@@ -1,14 +1,19 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"yula/internal/codes"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
 	"log"
 )
+
+type contextKey string
+
+const ContextUserId contextKey = "user_id"
 
 type SessionMiddleware struct {
 	sessionUsecase session.SessionUsecase
@@ -29,7 +34,8 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 
-			response := models.HttpError{Code: http.StatusUnauthorized, Message: err.Error()}
+			httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
+			response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
 			js, _ := json.Marshal(response)
 
 			w.Write(js)
@@ -43,17 +49,20 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 
-			response := models.HttpError{Code: http.StatusUnauthorized, Message: err.Error()}
+			httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
+			response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
 			js, _ := json.Marshal(response)
 
 			w.Write(js)
 			return
 		}
 
-		fmt.Println(cookie.Value)
-		fmt.Println(session.Value, session.UserId)
+		log.Printf("session %s for user %d got", session.Value, session.UserId)
 
-		log.Printf("session for user: %d got", session.UserId)
+		// то есть если нашли куку и она валидна, запишем ее в контекст
+		// чтобы затем использовать в последующих обработчиках
+		ctx := context.WithValue(r.Context(), ContextUserId, session.UserId)
+		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
 	})

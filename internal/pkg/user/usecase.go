@@ -10,4 +10,7 @@ type UserUsecase interface {
 	Create(user *models.UserSignUp) (*models.UserData, *codes.ServerError)
 	GetByEmail(email string) (*models.UserData, *codes.ServerError)
 	CheckPassword(user *models.UserData, gettedPassword string) *codes.ServerError
+
+	GetById(id int64) (*models.Profile, *codes.ServerError)
+	//UpdateProfile(user *models.Profile) (*models.Profile, *codes.ServerError)
 }

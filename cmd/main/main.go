@@ -54,7 +54,8 @@ func main() {
 
 	sm := middleware.NewSessionMiddleware(su)
 
-	uh.Routing(r, sm)
+	s := r.PathPrefix("/users").Subrouter()
+	uh.Routing(s, sm)
 	sh.Routing(r)
 
 	fmt.Println("start serving :8080")

@@ -5,11 +5,17 @@ import (
 )
 
 type UserData struct {
+	// main info
 	Id        int64     `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"created_at"`
+
+	// additional info
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
+	Image   string `json:"image"`
 }
 
 type UserSignIn struct {
@@ -39,9 +45,19 @@ func (user *UserData) RemovePassword() UserWithoutPassword {
 }
 
 type Profile struct {
-	Id      int64  `json:"id"`
-	UserId  int64  `json:"user_id"`
+	Id        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+
 	Name    string `json:"name"`
 	Surname string `json:"surname"`
 	Image   string `json:"image"`
+}
+
+func (user *UserData) ToProfile() *Profile {
+	return &Profile{
+		Id: user.Id, Username: user.Username, Email: user.Email, CreatedAt: user.CreatedAt,
+		Name: user.Name, Surname: user.Surname, Image: user.Image,
+	}
 }

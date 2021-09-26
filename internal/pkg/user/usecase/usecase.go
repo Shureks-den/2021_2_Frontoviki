@@ -73,3 +73,18 @@ func (uu *UserUsecase) CheckPassword(user *models.UserData, gettedPassword strin
 	}
 	return nil
 }
+
+func (uu *UserUsecase) GetById(user_id int64) (*models.Profile, *codes.ServerError) {
+	user, err := uu.userRepo.SelectById(user_id)
+
+	if err == nil {
+		return user.ToProfile(), nil
+	}
+
+	switch err.Error {
+	case codes.EmptyRow:
+		return nil, codes.NewServerError(codes.UserNotExist)
+	default:
+		return nil, codes.NewServerError(codes.UnexpectedError)
+	}
+}
