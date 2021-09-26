@@ -72,7 +72,7 @@ func (sr *SessionRepository) Set(sess *models.Session) error {
 func (sr *SessionRepository) Delete(sess *models.Session) error {
 	sr.m.Lock()
 	conn := sr.pool[sr.roundRobinCur]
-	_, err := conn.Delete("sessions", "secondary", []interface{}{sess.UserId})
+	_, err := conn.Delete("sessions", "primary", []interface{}{sess.Value})
 	sr.roundRobinCur = (sr.roundRobinCur + 1) % uint32(len(sr.pool))
 	sr.m.Unlock()
 
@@ -89,6 +89,10 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	resp, err := conn.Select("sessions", "primary", 0, 1, tarantool.IterEq, []interface{}{value})
 	sr.roundRobinCur = (sr.roundRobinCur + 1) % uint32(len(sr.pool))
 	sr.m.RUnlock()
+
+	if len(resp.Data) == 0 {
+		return nil, nil
+	}
 
 	sess := models.Session{
 		Value:     (((resp.Data[0]).([]interface{}))[0]).(string),

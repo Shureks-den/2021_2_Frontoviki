@@ -22,4 +22,4 @@ function is_tuple_expired(args, tuple)
   if (tuple[3] < fiber.time()) then return true end
   return false
   end
-expd.run_task('sessions', s.id, is_tuple_expired)
+expd.run_task('sessions', box.space.sessions.id, is_tuple_expired)
