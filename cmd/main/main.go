@@ -47,7 +47,6 @@ func main() {
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	//&cnfg.TarantoolCfg
-
 	au := advtUse.NewAdvtUsecase(ar)
 	uu := userUse.NewUserUsecase(ur)
 	su := sessUse.NewSessionUsecase(sr)
@@ -63,7 +62,7 @@ func main() {
 	uh.Routing(s, sm)
 	sh.Routing(r)
 
-	fmt.Println("start serving :8080")
+	fmt.Println("start serving :5001")
 
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(":5001", r)
 }
