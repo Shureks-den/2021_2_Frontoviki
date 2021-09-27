@@ -15,6 +15,10 @@ import (
 	sessRep "yula/internal/pkg/session/repository"
 	sessUse "yula/internal/pkg/session/usecase"
 
+	advtHttp "yula/internal/pkg/advt/delivery/http"
+	advtRep "yula/internal/pkg/advt/repository"
+	advtUse "yula/internal/pkg/advt/usecase"
+
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -37,19 +41,23 @@ func main() {
 
 	r := mux.NewRouter()
 
+	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	//&cnfg.TarantoolCfg
 
+	au := advtUse.NewAdvtUsecase(ar)
 	uu := userUse.NewUserUsecase(ur)
 	su := sessUse.NewSessionUsecase(sr)
 
+	ah := advtHttp.NewAdvtHandler(au)
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 
 	sm := middleware.NewSessionMiddleware(su)
 
 	s := r.PathPrefix("/users").Subrouter()
+	ah.Routing(r)
 	uh.Routing(s, sm)
 	sh.Routing(r)
 

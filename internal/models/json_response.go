@@ -24,3 +24,7 @@ type HttpBodyInterface struct {
 	Message string      `json:"message"`
 	Body    interface{} `json:"body"`
 }
+
+type HttpBodyAdvts struct {
+	Advts []*AdvtData `json:"advts"`
+}
