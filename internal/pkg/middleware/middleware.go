@@ -77,7 +77,7 @@ func CorsMiddleware(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		log.Println(origin, "k")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost")
+		w.Header().Set("Access-Control-Allow-Origin", "http://89.19.190.83:5000")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 		w.Header().Set("Content-Type", "application/json")
