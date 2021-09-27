@@ -40,6 +40,8 @@ func main() {
 	defer postgres.Close()
 
 	r := mux.NewRouter()
+	r.Use(middleware.CorsMiddleware)
+	r.Use(middleware.JsonMiddleware)
 
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())

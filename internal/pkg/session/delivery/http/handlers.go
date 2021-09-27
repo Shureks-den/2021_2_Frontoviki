@@ -25,8 +25,8 @@ func NewSessionHandler(sessionUsecase session.SessionUsecase, userUsecase user.U
 }
 
 func (sh *SessionHandler) Routing(r *mux.Router) {
-	r.HandleFunc("/signin", sh.SignInHandler).Methods(http.MethodPost)
-	r.HandleFunc("/logout", sh.LogOutHandler).Methods(http.MethodPost)
+	r.HandleFunc("/signin", sh.SignInHandler).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/logout", sh.LogOutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {

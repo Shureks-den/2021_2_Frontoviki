@@ -20,13 +20,12 @@ func NewAdvtHandler(advtUsecase advt.AdvtUsecase) *AdvtHandler {
 }
 
 func (ah *AdvtHandler) Routing(r *mux.Router) {
-	r.HandleFunc("/", ah.AdvtListHandler).Methods(http.MethodGet)
+	r.HandleFunc("/", ah.AdvtListHandler).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func (ah *AdvtHandler) AdvtListHandler(w http.ResponseWriter, r *http.Request) {
-	advts, err := ah.advtUsecase.GetListAdvt(0, 1, true)
+	advts, err := ah.advtUsecase.GetListAdvt(0, 100, true)
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -36,7 +35,6 @@ func (ah *AdvtHandler) AdvtListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "list of ads found successfully",

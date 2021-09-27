@@ -26,10 +26,10 @@ func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.Session
 }
 
 func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
-	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost)
+	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost, http.MethodOptions)
 
-	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet)
-	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost)
+	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
+	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	// r.Handle("profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost)
 	// - пока не работает
 }

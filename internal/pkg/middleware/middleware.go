@@ -69,3 +69,35 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+var allowedHeaders string = "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location"
+
+func CorsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		switch origin {
+		case "http://127.0.0.1:8080":
+			w.Header().Set("Access-Control-Allow-Origin", "http://127.0.0.1:8080")
+
+		case "http://89.19.190.83:5001":
+			w.Header().Set("Access-Control-Allow-Origin", "http://89.19.190.83:5001")
+		}
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func JsonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
