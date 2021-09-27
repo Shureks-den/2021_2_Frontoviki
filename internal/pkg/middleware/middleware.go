@@ -76,7 +76,8 @@ func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		log.Println(origin, "k")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 		w.Header().Set("Content-Type", "application/json")
@@ -93,7 +94,6 @@ func JsonMiddleware(next http.Handler) http.Handler {
 		if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 			return
 		}
-		log.Println("json")
 		next.ServeHTTP(w, r)
 	})
 }

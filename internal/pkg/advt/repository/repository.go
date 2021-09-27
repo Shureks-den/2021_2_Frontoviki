@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"sync"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
@@ -23,17 +23,21 @@ func NewAdvtRepository(pool *pgxpool.Pool) advt.AdvtRepository {
 }
 
 func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.AdvtData, error) {
-	queryStr := `SELECT * FROM advts;`
-	log.Println(queryStr)
+	queryStr := `SELECT a.id, a.name, a.description, a.price, a.location, a.published_at, a.image, a.publisher_id, a.is_active FROM advts a
+				 %s LIMIT $1 OFFSET $2;`
+	if isSortedByPublichedDate {
+		queryStr = fmt.Sprintf(queryStr, " ORDER BY a.published_at DESC")
+	} else {
+		queryStr = fmt.Sprintf(queryStr, "")
+	}
 
-	rows, err := ar.pool.Query(context.Background(), queryStr)
+	rows, err := ar.pool.Query(context.Background(), queryStr, count, from*count)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var advts []*models.AdvtData
-	log.Println("db prefor")
 	for rows.Next() {
 		advt := &models.AdvtData{}
 
@@ -42,13 +46,9 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 		if err != nil {
 			return nil, err
 		}
-		log.Println("db for")
+
 		advts = append(advts, advt)
 	}
-	log.Println("db afterfor")
-	if rows.Err() != nil {
-		log.Println(rows.Err().Error())
-		return nil, rows.Err()
-	}
+
 	return advts, nil
 }

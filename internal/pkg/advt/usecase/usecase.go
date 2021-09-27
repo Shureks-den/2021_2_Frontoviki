@@ -24,7 +24,6 @@ func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*mod
 	}
 
 	if len(advts) == 0 {
-		log.Println("abobatime")
 		return []*models.AdvtData{}, nil
 	}
 
