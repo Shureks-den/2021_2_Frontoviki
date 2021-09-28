@@ -5,23 +5,12 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 	"yula/internal/config"
-	"yula/internal/models"
 	sessRep "yula/internal/pkg/session/repository"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
-
-var password = "c0mplex"
-var testUser = &models.UserSignUp{
-	Id:        0,
-	Username:  "test_username",
-	Email:     "test@email.com",
-	Password:  password,
-	CreatedAt: time.Now(),
-}
 
 func TestSession_SignInHandler_CreateSuccess(t *testing.T) {
 	pwd, err := os.Getwd()
