@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"yula/internal/codes"
 	"yula/internal/models"
@@ -28,8 +27,9 @@ func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.Session
 func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost, http.MethodOptions)
 
-	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
-	r.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s := r.PathPrefix("/users").Subrouter()
+	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	// r.Handle("profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost)
 	// - пока не работает
 }
@@ -40,7 +40,6 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&signUpUser)
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
@@ -52,7 +51,6 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, servErr := uh.userUsecase.Create(&signUpUser)
 	if servErr != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(servErr)
@@ -65,7 +63,6 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	userSession, err := uh.sessionUsecase.Create(user.Id)
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusInternalServerError, Message: "something went wrong"}
@@ -80,9 +77,10 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    userSession.Value,
 		Expires:  userSession.ExpiresAt,
 		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
 	})
 
-	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 	w.WriteHeader(http.StatusCreated)
 
@@ -96,11 +94,8 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(middleware.ContextUserId).(int64)
 
-	log.Printf("User %d opened profile", userId)
-
 	profile, serverErr := uh.userUsecase.GetById(userId)
 	if serverErr != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(serverErr)
@@ -111,7 +106,6 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile opened",
@@ -124,13 +118,10 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(middleware.ContextUserId).(int64)
 
-	log.Printf("User %d opened profile and edit", userId)
-
 	userNew := models.UserData{}
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&userNew)
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
@@ -142,7 +133,6 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 	profile, serverErr := uh.userUsecase.UpdateProfile(userId, &userNew)
 	if serverErr != nil {
-		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
 		httpStat := codes.ServerErrorToHttpStatus(serverErr)
@@ -153,7 +143,6 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile updated",

@@ -59,8 +59,6 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			return
 		}
 
-		log.Printf("session %s for user %d got", session.Value, session.UserId)
-
 		// то есть если нашли куку и она валидна, запишем ее в контекст
 		// чтобы затем использовать в последующих обработчиках
 		ctx := context.WithValue(r.Context(), ContextUserId, session.UserId)
@@ -70,17 +68,13 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 	})
 }
 
-var allowedHeaders string = "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location"
-
 func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		log.Println(origin, "k")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
 		w.Header().Set("Access-Control-Allow-Origin", "http://89.19.190.83:5000")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location")
 		if r.Method == "OPTIONS" {
 			return
 		}
@@ -94,6 +88,7 @@ func JsonMiddleware(next http.Handler) http.Handler {
 		if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		next.ServeHTTP(w, r)
 	})
 }

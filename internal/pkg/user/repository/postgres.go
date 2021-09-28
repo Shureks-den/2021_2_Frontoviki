@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"sync"
 	"yula/internal/codes"
 	"yula/internal/models"
@@ -32,7 +32,7 @@ func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
-		fmt.Println("unable to insert", err.Error())
+		log.Println("unable to insert", err.Error())
 		return codes.NewDatabaseError(codes.UnexpectedDbError)
 	}
 
