@@ -14,6 +14,5 @@ type UserUsecase interface {
 
 	GetById(id int64) (*models.Profile, *codes.ServerError)
 	UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, *codes.ServerError)
-	CheckEmail(email string) *codes.ServerError
 	UploadAvatar(file *multipart.FileHeader, userId int64) *codes.ServerError // пока не работает
 }

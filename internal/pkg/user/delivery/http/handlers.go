@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"yula/internal/codes"
@@ -43,9 +44,11 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
-		js, _ := json.Marshal(response)
+		js := new(bytes.Buffer)
 
-		w.Write(js)
+		json.NewEncoder(js).Encode(response)
+
+		w.Write(js.Bytes())
 		return
 	}
 
@@ -92,7 +95,10 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(middleware.ContextUserId).(int64)
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
 
 	profile, serverErr := uh.userUsecase.GetById(userId)
 	if serverErr != nil {
@@ -116,7 +122,10 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(middleware.ContextUserId).(int64)
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
 
 	userNew := models.UserData{}
 	defer r.Body.Close()

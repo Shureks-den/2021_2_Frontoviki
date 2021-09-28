@@ -36,11 +36,10 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, *cod
 		return nil, codes.NewServerError(codes.InternalError)
 	}
 
-	userSU.Password = string(passwordHash)
 	user := models.UserData{}
 	user.Username = userSU.Username
 	user.Email = userSU.Email
-	user.Password = userSU.Password
+	user.Password = string(passwordHash)
 	user.CreatedAt = time.Now()
 
 	dbErr := uu.userRepo.Insert(&user)
@@ -95,11 +94,12 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 	if err != nil {
 		return nil, codes.NewServerError(codes.UserNotExist)
 	}
+	// userActual.Id != userNew.Id => error
 
 	if userNew.Email != "" && userNew.Email != userActual.Email {
 		// проверка на уникальность новой почты
-		serverErr := uu.CheckEmail(userNew.Email)
-		if serverErr != nil {
+		_, serverErr := uu.GetByEmail(userNew.Email)
+		if serverErr != codes.StatusMap[codes.UserNotExist] {
 			return nil, serverErr
 		}
 	}
@@ -115,21 +115,6 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 	}
 
 	return userNew.ToProfile(), nil
-}
-
-func (uu *UserUsecase) CheckEmail(email string) *codes.ServerError {
-	_, err := uu.userRepo.SelectByEmail(email)
-
-	switch err {
-	case nil:
-		return codes.NewServerError(codes.UserAlreadyExist)
-
-	case codes.NewDatabaseError(codes.EmptyRow):
-		return nil
-
-	default:
-		return codes.NewServerError(codes.InternalError)
-	}
 }
 
 func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) *codes.ServerError {

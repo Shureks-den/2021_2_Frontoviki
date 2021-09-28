@@ -2,8 +2,11 @@ package repository
 
 import (
 	"fmt"
-	"log"
+	"math/rand"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -14,16 +17,19 @@ import (
 )
 
 func TestInit(t *testing.T) {
-	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
+	pwd, err := os.Getwd()
+	folders := strings.Split(pwd, "/")
+	pwd = strings.Join(folders[:len(folders)-4], "/")
+	fmt.Println(pwd, err)
+
+	if err := godotenv.Load(pwd + "/.env"); err != nil {
+		t.Fatal("No .env file found")
 	}
 
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
 	}
 	defer postgres.Close()
 
@@ -37,16 +43,19 @@ func TestInit(t *testing.T) {
 }
 
 func TestInsertSelect(t *testing.T) {
-	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
+	pwd, err := os.Getwd()
+	folders := strings.Split(pwd, "/")
+	pwd = strings.Join(folders[:len(folders)-4], "/")
+	fmt.Println(pwd, err)
+
+	if err := godotenv.Load(pwd + "/.env"); err != nil {
+		t.Fatal("No .env file found")
 	}
 
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
 	}
 	defer postgres.Close()
 
@@ -58,8 +67,8 @@ func TestInsertSelect(t *testing.T) {
 	assert.NotNil(t, ur)
 
 	ud := models.UserData{
-		Email:    "stringwfwrwf@mail.ru",
-		Password: "3191031",
+		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TESTINSERTSELECT.ru",
+		Password: "3191022331",
 	}
 
 	ur.Insert(&ud)
@@ -71,15 +80,19 @@ func TestInsertSelect(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
+	pwd, err := os.Getwd()
+	folders := strings.Split(pwd, "/")
+	pwd = strings.Join(folders[:len(folders)-4], "/")
+	fmt.Println(pwd, err)
+
+	if err := godotenv.Load(pwd + "/.env"); err != nil {
+		t.Fatal("No .env file found")
 	}
 
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
 	}
 	defer postgres.Close()
 
@@ -91,12 +104,12 @@ func TestUpdate(t *testing.T) {
 	assert.NotNil(t, ur)
 
 	ud := models.UserData{
-		Email:    "stringwfwrwf@mail.ru",
+		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TESTUPDATE.ru",
 		Password: "3191031",
 	}
 
 	ur.Insert(&ud)
-	ud.Email = "eoqoepqpqeoqoqepqe@mail.ru"
+	ud.Email = fmt.Sprint(time.Now().Unix()) + "TESTUPDATE_aboba@mail.ru"
 	ur.Update(&ud)
 
 	user, _ := ur.SelectById(ud.Id)

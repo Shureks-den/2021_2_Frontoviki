@@ -32,6 +32,7 @@ func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
+
 		log.Println("unable to insert", err.Error())
 		return codes.NewDatabaseError(codes.UnexpectedDbError)
 	}
@@ -84,6 +85,7 @@ func (ur *UserRepository) Update(user *models.UserData) *codes.DatabaseError {
 		user.Id, user.Username, user.Email, user.Password, user.Name, user.Surname, user.Image)
 
 	if err != nil {
+		log.Fatalf(err.Error())
 		return codes.NewDatabaseError(codes.UnableToUpdate)
 	}
 
