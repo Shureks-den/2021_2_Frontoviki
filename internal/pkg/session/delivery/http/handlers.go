@@ -90,7 +90,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpError{Code: http.StatusOK, Message: "signin successfully"}
-	js, _ := json.Marshal(response)
+	js, err := json.Marshal(response)
+	if err != nil {
+		js = []byte(`{ "Code": 500, "password": internal server error }`)
+	}
 
 	w.Write(js)
 }
