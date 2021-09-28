@@ -82,7 +82,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 
 	response := models.HttpUser{Code: http.StatusCreated, Message: "user created successfully",
 		Body: models.HttpBodyUser{User: user.RemovePassword()}}
