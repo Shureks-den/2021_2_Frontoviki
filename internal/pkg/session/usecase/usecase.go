@@ -19,7 +19,7 @@ func NewSessionUsecase(repo session.SessionRepository) session.SessionUsecase {
 }
 
 func (su *SessionUsecase) Create(userId int64) (*models.Session, error) {
-	sess := models.Session{Value: uuid.NewString(), UserId: userId, ExpiresAt: time.Now().Add(time.Minute)}
+	sess := models.Session{Value: uuid.NewString(), UserId: userId, ExpiresAt: time.Now().Add(time.Hour)}
 
 	if err := su.sessionRepo.Set(&sess); err != nil {
 		return nil, err
