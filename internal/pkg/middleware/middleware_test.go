@@ -30,7 +30,7 @@ func TestMiddleware_CorsMiddleware_Succsess(t *testing.T) {
 	assert.Equal(t, string("Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location"),
 		w.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, string("POST, GET, OPTIONS, PUT, DELETE"), w.Header().Get("Access-Control-Allow-Methods"))
-	assert.Equal(t, string("http://89.19.190.83:5000"), w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, string("https://volchok.netlify.app"), w.Header().Get("Access-Control-Allow-Origin"))
 
 }
 
