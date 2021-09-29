@@ -61,7 +61,13 @@ func main() {
 	uh.Routing(r, sm)
 	sh.Routing(r)
 
-	fmt.Println("start serving :5001")
+	//http
+	// fmt.Println("start serving ::80")
+	// error := http.ListenAndServe(":80", r)
 
-	http.ListenAndServe(":5001", r)
+	//https
+	fmt.Println("start serving ::443")
+	error := http.ListenAndServeTLS(":443", "certificate.crt", "key.key", r)
+
+	fmt.Println(error)
 }
