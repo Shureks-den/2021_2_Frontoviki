@@ -1,0 +1,33 @@
+# Binaries for programs and plugins
+*.key
+*.crt
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Environment
+.env
+
+
+# Tarantool logs
+*.snap
+*.xlog
