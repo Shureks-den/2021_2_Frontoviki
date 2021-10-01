@@ -83,9 +83,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		Value:    userSession.Value,
 		Expires:  userSession.ExpiresAt,
 		HttpOnly: true,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
-		Secure:   true,
 	})
 
 	w.WriteHeader(http.StatusOK)

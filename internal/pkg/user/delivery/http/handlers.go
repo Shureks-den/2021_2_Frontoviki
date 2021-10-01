@@ -80,7 +80,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    userSession.Value,
 		Expires:  userSession.ExpiresAt,
 		HttpOnly: true,
-		SameSite: http.SameSiteNoneMode,
+		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 
