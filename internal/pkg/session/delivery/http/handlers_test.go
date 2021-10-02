@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"yula/internal/codes"
 	"yula/internal/config"
 	"yula/internal/database"
 	"yula/internal/models"
@@ -65,7 +64,7 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 	su := sessUse.NewSessionUsecase(sr)
 
 	_, serverErr := uu.Create(testUser)
-	if serverErr != nil && serverErr.ErrorCode != codes.UserAlreadyExist {
+	if serverErr != nil {
 		t.Fatal()
 	}
 

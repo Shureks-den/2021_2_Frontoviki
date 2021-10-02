@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	"yula/internal/codes"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
@@ -36,34 +36,26 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
-	user, serverErr := sh.userUsecase.GetByEmail(signInUser.Email)
-	if serverErr != nil {
+	user, err := sh.userUsecase.GetByEmail(signInUser.Email)
+	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(serverErr)
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
-	serverErr = sh.userUsecase.CheckPassword(user, signInUser.Password)
-	if serverErr != nil {
+	err = sh.userUsecase.CheckPassword(user, signInUser.Password)
+	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(serverErr)
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -71,10 +63,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		response := models.HttpError{Code: http.StatusInternalServerError, Message: "something went wrong"}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -88,14 +78,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.WriteHeader(http.StatusOK)
-
-	response := models.HttpError{Code: http.StatusOK, Message: "signin successfully"}
-	js, err := json.Marshal(response)
-	if err != nil {
-		js = []byte(`{ "Code": 500, "password": internal server error }`)
-	}
-
-	w.Write(js)
+	w.Write(models.ToBytes(http.StatusOK, "signin successfully", nil))
 }
 
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
@@ -103,11 +86,8 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.Unauthorized))
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.Unauthorized)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -115,11 +95,8 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(codes.NewServerError(codes.InternalError))
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -127,9 +104,5 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 	http.SetCookie(w, session)
 
 	w.WriteHeader(http.StatusOK)
-
-	response := models.HttpError{Code: http.StatusOK, Message: "logout successfully"}
-	js, _ := json.Marshal(response)
-
-	w.Write(js)
+	w.Write(models.ToBytes(http.StatusOK, "logout successfully", nil))
 }

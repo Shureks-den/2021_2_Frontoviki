@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
 
@@ -33,7 +34,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 
 	rows, err := ar.pool.Query(context.Background(), queryStr, count, from*count)
 	if err != nil {
-		return nil, err
+		return nil, internalError.DatabaseError
 	}
 	defer rows.Close()
 
@@ -44,7 +45,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 		err := rows.Scan(&advt.Id, &advt.Name, &advt.Description, &advt.Price, &advt.Location,
 			&advt.PublishedAt, &advt.Image, &advt.PublisherId, &advt.IsActive)
 		if err != nil {
-			return nil, err
+			return nil, internalError.DatabaseError
 		}
 
 		advts = append(advts, advt)

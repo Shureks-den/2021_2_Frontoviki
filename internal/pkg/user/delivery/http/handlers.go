@@ -1,10 +1,9 @@
 package delivery
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
-	"yula/internal/codes"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/session"
@@ -43,12 +42,8 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
-		js := new(bytes.Buffer)
-
-		json.NewEncoder(js).Encode(response)
-
-		w.Write(js.Bytes())
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -56,11 +51,8 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	if servErr != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(servErr)
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(servErr)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -68,10 +60,8 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		response := models.HttpError{Code: http.StatusInternalServerError, Message: "something went wrong"}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
@@ -87,11 +77,8 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 	w.WriteHeader(http.StatusOK)
 
-	response := models.HttpUser{Code: http.StatusCreated, Message: "user created successfully",
-		Body: models.HttpBodyUser{User: user.RemovePassword()}}
-	js, _ := json.Marshal(response)
-
-	w.Write(js)
+	body := models.HttpBodyUser{User: user.RemovePassword()}
+	w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
 }
 
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,25 +87,19 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
 
-	profile, serverErr := uh.userUsecase.GetById(userId)
-	if serverErr != nil {
+	profile, err := uh.userUsecase.GetById(userId)
+	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(serverErr)
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 
-	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile opened",
-		Body: models.HttpBodyProfile{Profile: *profile}}
-	js, _ := json.Marshal(response)
-
-	w.Write(js)
+	body := models.HttpBodyProfile{Profile: *profile}
+	w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
 }
 
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,32 +114,24 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		response := models.HttpError{Code: http.StatusBadRequest, Message: err.Error()}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
-	profile, serverErr := uh.userUsecase.UpdateProfile(userId, &userNew)
-	if serverErr != nil {
+	profile, err := uh.userUsecase.UpdateProfile(userId, &userNew)
+	if err != nil {
 		w.WriteHeader(http.StatusOK)
 
-		httpStat := codes.ServerErrorToHttpStatus(serverErr)
-		response := models.HttpError{Code: httpStat.Code, Message: httpStat.Message}
-		js, _ := json.Marshal(response)
-
-		w.Write(js)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 
-	response := models.HttpBodyInterface{Code: http.StatusOK, Message: "profile updated",
-		Body: models.HttpBodyProfile{Profile: *profile}}
-	js, _ := json.Marshal(response)
-
-	w.Write(js)
+	body := models.HttpBodyProfile{Profile: *profile}
+	w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
 }
 
 /*

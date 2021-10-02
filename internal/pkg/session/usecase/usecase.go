@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"time"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
@@ -30,7 +31,12 @@ func (su *SessionUsecase) Create(userId int64) (*models.Session, error) {
 func (su *SessionUsecase) Delete(value string) error {
 	sess, err := su.sessionRepo.GetByValue(value)
 	if err != nil {
-		return err
+		switch err {
+		case internalError.EmptyQuery:
+			return internalError.NotExist
+		default:
+			return err
+		}
 	}
 
 	err = su.sessionRepo.Delete(sess)
@@ -40,7 +46,12 @@ func (su *SessionUsecase) Delete(value string) error {
 func (su *SessionUsecase) Check(value string) (*models.Session, error) {
 	sess, err := su.sessionRepo.GetByValue(value)
 	if err != nil {
-		return nil, err
+		switch err {
+		case internalError.EmptyQuery:
+			return nil, internalError.NotExist
+		default:
+			return nil, err
+		}
 	}
 	return sess, nil
 }

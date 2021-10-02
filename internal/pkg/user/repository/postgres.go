@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
-	"yula/internal/codes"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
 
@@ -23,7 +23,7 @@ func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
 	}
 }
 
-func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
+func (ur *UserRepository) Insert(user *models.UserData) error {
 	ur.m.Lock()
 	row := ur.pool.QueryRow(context.Background(),
 		"INSERT INTO users (username, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id;",
@@ -34,14 +34,14 @@ func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
 	if err := row.Scan(&id); err != nil {
 
 		log.Println("unable to insert", err.Error())
-		return codes.NewDatabaseError(codes.UnexpectedDbError)
+		return internalError.DatabaseError
 	}
 
 	user.Id = id
 	return nil
 }
 
-func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.DatabaseError) {
+func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) {
 	ur.m.RLock()
 	row := ur.pool.QueryRow(context.Background(),
 		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE email = $1", email)
@@ -52,15 +52,15 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.
 		&user.Name, &user.Surname, &user.Image); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
-			return nil, codes.NewDatabaseError(codes.EmptyRow)
+			return nil, internalError.EmptyQuery
 		}
-		return nil, codes.NewDatabaseError(codes.UnexpectedDbError)
+		return nil, internalError.DatabaseError
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.DatabaseError) {
+func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 	ur.m.RLock()
 	row := ur.pool.QueryRow(context.Background(),
 		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE id = $1", userId)
@@ -71,26 +71,26 @@ func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.Dat
 		&user.Name, &user.Surname, &user.Image); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
-			return nil, codes.NewDatabaseError(codes.EmptyRow)
+			return nil, internalError.EmptyQuery
 		}
-		return nil, codes.NewDatabaseError(codes.UnexpectedDbError)
+		return nil, internalError.DatabaseError
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) Update(user *models.UserData) *codes.DatabaseError {
+func (ur *UserRepository) Update(user *models.UserData) error {
 	res, err := ur.pool.Exec(context.Background(),
 		"UPDATE users SET username = $2, email = $3, password = $4, name = $5, surname = $6, image = $7 WHERE id = $1",
 		user.Id, user.Username, user.Email, user.Password, user.Name, user.Surname, user.Image)
 
 	if err != nil {
 		log.Fatalf(err.Error())
-		return codes.NewDatabaseError(codes.UnableToUpdate)
+		return internalError.InvalidQuery
 	}
 
 	if count := res.RowsAffected(); count != 1 {
-		return codes.NewDatabaseError(codes.NotUpdated)
+		return internalError.NotUpdated
 	}
 
 	return nil
