@@ -19,6 +19,7 @@ import (
 	advtRep "yula/internal/pkg/advt/repository"
 	advtUse "yula/internal/pkg/advt/usecase"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -28,6 +29,8 @@ func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("No .env file found")
 	}
+
+	govalidator.SetFieldsRequiredByDefault(true)
 }
 
 func main() {

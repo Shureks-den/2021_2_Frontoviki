@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 	"yula/internal/config"
 	"yula/internal/database"
 	"yula/internal/models"
@@ -26,11 +25,10 @@ import (
 
 var password = "c0mplex"
 var testUser = &models.UserSignUp{
-	Id:        0,
-	Username:  "test_username",
-	Email:     "test@email.com",
-	Password:  password,
-	CreatedAt: time.Now(),
+	Email:    "test@email.com",
+	Password: password,
+	Name:     "test",
+	Surname:  "surtest",
 }
 
 func TestSession_SignInHandler_Success(t *testing.T) {

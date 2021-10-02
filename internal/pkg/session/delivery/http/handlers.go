@@ -9,6 +9,7 @@ import (
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
@@ -38,6 +39,13 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(signInUser)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
 

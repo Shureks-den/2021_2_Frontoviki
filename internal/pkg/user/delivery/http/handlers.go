@@ -9,6 +9,7 @@ import (
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 )
 
@@ -47,6 +48,13 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = govalidator.ValidateStruct(signUpUser)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		return
+	}
+
 	user, servErr := uh.userUsecase.Create(&signUpUser)
 	if servErr != nil {
 		w.WriteHeader(http.StatusOK)
@@ -77,7 +85,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 	w.WriteHeader(http.StatusOK)
 
-	body := models.HttpBodyUser{User: user.RemovePassword()}
+	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
 	w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
 }
 
@@ -116,6 +124,13 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(userNew)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
 

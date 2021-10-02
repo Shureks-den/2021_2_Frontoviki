@@ -37,9 +37,10 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, erro
 	}
 
 	user := models.UserData{}
-	user.Username = userSU.Username
 	user.Email = userSU.Email
 	user.Password = string(passwordHash)
+	user.Name = userSU.Name
+	user.Surname = userSU.Surname
 	user.CreatedAt = time.Now()
 
 	dbErr := uu.userRepo.Insert(&user)

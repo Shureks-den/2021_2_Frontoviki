@@ -16,7 +16,7 @@ func NewAdvtUsecase(advtRepository advt.AdvtRepository) advt.AdvtUsecase {
 	}
 }
 
-func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*models.AdvtData, error) {
+func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error) {
 	advts, err := au.advtRepository.SelectListAdvt(newest, from, count)
 	if err != nil {
 		log.Println("invalid data from SelectListAdvt")
@@ -24,7 +24,7 @@ func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*mod
 	}
 
 	if len(advts) == 0 {
-		return []*models.AdvtData{}, nil
+		return []*models.Advert{}, nil
 	}
 
 	return advts, nil

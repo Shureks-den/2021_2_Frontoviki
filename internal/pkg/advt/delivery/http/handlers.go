@@ -34,6 +34,6 @@ func (ah *AdvtHandler) AdvtListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 
-	body := models.HttpBodyAdvts{Advts: advts}
+	body := models.HttpBodyAdvts{Advert: advts}
 	w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
 }
