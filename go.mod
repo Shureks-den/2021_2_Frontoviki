@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/stretchr/testify v1.7.0
 	github.com/tarantool/go-tarantool v0.0.0-20210330210617-56fe55c5fa5c
 )

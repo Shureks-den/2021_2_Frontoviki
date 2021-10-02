@@ -19,6 +19,7 @@ import (
 	advtRep "yula/internal/pkg/advt/repository"
 	advtUse "yula/internal/pkg/advt/usecase"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -28,6 +29,8 @@ func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("No .env file found")
 	}
+
+	govalidator.SetFieldsRequiredByDefault(true)
 }
 
 func main() {
@@ -62,12 +65,12 @@ func main() {
 	sh.Routing(r)
 
 	//http
-	// fmt.Println("start serving ::80")
-	// error := http.ListenAndServe(":80", r)
+	fmt.Println("start serving ::8080")
+	error := http.ListenAndServe(":8080", r)
 
 	// //https
-	fmt.Println("start serving ::5000")
-	error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
+	// fmt.Println("start serving ::5000")
+	// error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
 
 	fmt.Println(error)
 }

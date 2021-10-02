@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
-	"yula/internal/codes"
 	"yula/internal/config"
 	"yula/internal/database"
 	"yula/internal/models"
@@ -27,11 +25,10 @@ import (
 
 var password = "c0mplex"
 var testUser = &models.UserSignUp{
-	Id:        0,
-	Username:  "test_username",
-	Email:     "test@email.com",
-	Password:  password,
-	CreatedAt: time.Now(),
+	Email:    "test@email.com",
+	Password: password,
+	Name:     "test",
+	Surname:  "surtest",
 }
 
 func TestSession_SignInHandler_Success(t *testing.T) {
@@ -65,7 +62,7 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 	su := sessUse.NewSessionUsecase(sr)
 
 	_, serverErr := uu.Create(testUser)
-	if serverErr != nil && serverErr.ErrorCode != codes.UserAlreadyExist {
+	if serverErr != nil {
 		t.Fatal()
 	}
 

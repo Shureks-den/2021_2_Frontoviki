@@ -3,7 +3,7 @@ package usecase
 import (
 	"mime/multipart"
 	"time"
-	"yula/internal/codes"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
 
@@ -20,86 +20,87 @@ func NewUserUsecase(repo user.UserRepository) user.UserUsecase {
 	}
 }
 
-func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, *codes.ServerError) {
-	if _, err := uu.GetByEmail(userSU.Email); err != codes.NewServerError(codes.UserNotExist) {
+func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, error) {
+	if _, err := uu.GetByEmail(userSU.Email); err != internalError.NotExist {
 		switch err {
 		case nil:
-			return nil, codes.NewServerError(codes.UserAlreadyExist)
+			return nil, internalError.AlreadyExist
 
 		default:
-			return nil, codes.NewServerError(codes.InternalError)
+			return nil, err
 		}
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(userSU.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, codes.NewServerError(codes.InternalError)
+		return nil, internalError.InternalError
 	}
 
 	user := models.UserData{}
-	user.Username = userSU.Username
 	user.Email = userSU.Email
 	user.Password = string(passwordHash)
+	user.Name = userSU.Name
+	user.Surname = userSU.Surname
 	user.CreatedAt = time.Now()
 
 	dbErr := uu.userRepo.Insert(&user)
 
 	if dbErr != nil {
-		return nil, codes.NewServerError(codes.InternalError)
+		return nil, dbErr
 	}
 
 	return &user, nil
 }
 
-func (uu *UserUsecase) GetByEmail(email string) (*models.UserData, *codes.ServerError) {
+func (uu *UserUsecase) GetByEmail(email string) (*models.UserData, error) {
 	user, err := uu.userRepo.SelectByEmail(email)
 
 	if err == nil {
 		return user, nil
 	}
 
-	switch err.Error {
-	case codes.EmptyRow:
-		return nil, codes.NewServerError(codes.UserNotExist)
+	switch err {
+	case internalError.EmptyQuery:
+		return nil, internalError.NotExist
 	default:
-		return nil, codes.NewServerError(codes.UnexpectedError)
+		return nil, internalError.InternalError
 	}
 }
 
-func (uu *UserUsecase) CheckPassword(user *models.UserData, gettedPassword string) *codes.ServerError {
+func (uu *UserUsecase) CheckPassword(user *models.UserData, gettedPassword string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(gettedPassword))
 	if err != nil {
-		return codes.NewServerError(codes.Unauthorized)
+		return internalError.PasswordMismatch
 	}
 	return nil
 }
 
-func (uu *UserUsecase) GetById(user_id int64) (*models.Profile, *codes.ServerError) {
+func (uu *UserUsecase) GetById(user_id int64) (*models.Profile, error) {
 	user, err := uu.userRepo.SelectById(user_id)
 
 	if err == nil {
 		return user.ToProfile(), nil
 	}
 
-	switch err.Error {
-	case codes.EmptyRow:
-		return nil, codes.NewServerError(codes.UserNotExist)
+	switch err {
+	case internalError.EmptyQuery:
+		return nil, internalError.NotExist
 	default:
-		return nil, codes.NewServerError(codes.UnexpectedError)
+		return nil, internalError.InternalError
 	}
 }
 
-func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, *codes.ServerError) {
+func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, error) {
 	userActual, err := uu.userRepo.SelectById(userId)
 	if err != nil {
-		return nil, codes.NewServerError(codes.UserNotExist)
+		return nil, err
 	}
 	// userActual.Id != userNew.Id => error
 
 	if userNew.Email != "" && userNew.Email != userActual.Email {
 		// проверка на уникальность новой почты
 		_, serverErr := uu.GetByEmail(userNew.Email)
-		if serverErr != codes.StatusMap[codes.UserNotExist] {
+		if serverErr != internalError.NotExist {
 			return nil, serverErr
 		}
 	}
@@ -111,12 +112,12 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 
 	err = uu.userRepo.Update(userNew)
 	if err != nil {
-		return nil, codes.NewServerError(codes.NotFound)
+		return nil, err
 	}
 
 	return userNew.ToProfile(), nil
 }
 
-func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) *codes.ServerError {
+func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) error {
 	return nil
 }

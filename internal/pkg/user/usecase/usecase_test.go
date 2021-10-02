@@ -1,5 +1,6 @@
 package usecase
 
+/*
 import (
 	"fmt"
 	"math/rand"
@@ -300,7 +301,7 @@ func TestGetByIdUserNotExist(t *testing.T) {
 
 	_, error := uu.GetById(reqUser.Id)
 	assert.Equal(t, error, codes.StatusMap[codes.UserNotExist])
-}
+}*/
 
 // func TestUpdateUserProfile(t *testing.T) {
 // 	// loads values from .env into the system
