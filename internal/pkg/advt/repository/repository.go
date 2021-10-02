@@ -24,7 +24,7 @@ func NewAdvtRepository(pool *pgxpool.Pool) advt.AdvtRepository {
 }
 
 func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.Advert, error) {
-	queryStr := `SELECT a.id, a.name, a.description, a.price, a.location, a.published_at, a.publisher_id, a.is_active FROM advts a
+	queryStr := `SELECT a.id, a.name, a.description, a.price, a.city, a.published_at, a.publisher_id, a.is_active FROM advert a
 				 %s LIMIT $1 OFFSET $2;`
 	if isSortedByPublichedDate {
 		queryStr = fmt.Sprintf(queryStr, " ORDER BY a.published_at DESC")
