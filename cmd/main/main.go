@@ -54,13 +54,13 @@ func main() {
 	uu := userUse.NewUserUsecase(ur)
 	su := sessUse.NewSessionUsecase(sr)
 
-	ah := advtHttp.NewAdvtHandler(au)
+	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 
 	sm := middleware.NewSessionMiddleware(su)
 
-	ah.Routing(r)
+	ah.Routing(r, sm)
 	uh.Routing(r, sm)
 	sh.Routing(r)
 

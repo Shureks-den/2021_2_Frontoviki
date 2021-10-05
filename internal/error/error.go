@@ -36,6 +36,21 @@ var (
 		Message: "not apdated",
 	}
 
+	NotCreated error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "not created",
+	}
+
+	RollbackError error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "rollback error",
+	}
+
+	NotCommited error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "don't commited",
+	}
+
 	// определяем ошибки уровня usecase
 	NotExist error = ServerAnswer{
 		Code:    http.StatusNotFound,
