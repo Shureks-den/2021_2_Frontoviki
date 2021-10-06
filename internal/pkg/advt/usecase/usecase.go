@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"log"
+	"time"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
@@ -72,6 +73,27 @@ func (au *AdvtUsecase) DeleteAdvert(advertId int64, userId int64) error {
 	}
 
 	err = au.advtRepository.Delete(advertId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (au *AdvtUsecase) CloseAdvert(advertId int64, userId int64) error {
+	advert, err := au.GetAdvert(advertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId {
+		return internalError.Conflict
+	}
+
+	advert.IsActive = false
+	advert.DateClose = time.Now()
+
+	err = au.advtRepository.Update(advert)
 	if err != nil {
 		return err
 	}

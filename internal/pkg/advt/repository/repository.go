@@ -124,10 +124,10 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 	}
 
 	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE c.name = $4), 
-				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9 WHERE id = $1 RETURNING id;`
+				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9, date_close = $10 WHERE id = $1 RETURNING id;`
 	query := tx.QueryRow(context.Background(), queryStr, newAdvert.Id, newAdvert.Name, newAdvert.Description,
 		newAdvert.Category, newAdvert.Location, newAdvert.Latitude, newAdvert.Longitude,
-		newAdvert.Price, newAdvert.IsActive)
+		newAdvert.Price, newAdvert.IsActive, newAdvert.DateClose)
 
 	err = query.Scan(&newAdvert.Id)
 	if err != nil {

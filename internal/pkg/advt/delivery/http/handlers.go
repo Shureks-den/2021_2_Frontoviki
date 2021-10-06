@@ -36,6 +36,8 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
+
+	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 }
 
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +121,7 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 }
 
-func (au *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -158,7 +160,7 @@ func (au *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = au.advtUsecase.UpdateAdvert(advertId, &newAdvert)
+	err = ah.advtUsecase.UpdateAdvert(advertId, &newAdvert)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -171,7 +173,7 @@ func (au *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusCreated, "advert updated successfully", body))
 }
 
-func (au *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
+func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -186,7 +188,7 @@ func (au *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = au.advtUsecase.DeleteAdvert(advertId, userId)
+	err = ah.advtUsecase.DeleteAdvert(advertId, userId)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -196,4 +198,31 @@ func (au *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "advert deleted successfully", nil))
+}
+
+func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Request) {
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.CloseAdvert(advertId, userId)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
 }
