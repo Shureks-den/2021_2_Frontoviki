@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"log"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
 )
@@ -57,5 +58,23 @@ func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) er
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (au *AdvtUsecase) DeleteAdvert(advertId int64, userId int64) error {
+	advert, err := au.GetAdvert(advertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId {
+		return internalError.Conflict
+	}
+
+	err = au.advtRepository.Delete(advertId)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

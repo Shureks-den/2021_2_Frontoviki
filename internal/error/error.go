@@ -72,6 +72,11 @@ var (
 		Message: "password mismatch",
 	}
 
+	Conflict error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "unable to access this resource",
+	}
+
 	// определяем ошибки уровня http
 	BadRequest error = ServerAnswer{
 		Code:    http.StatusBadRequest,

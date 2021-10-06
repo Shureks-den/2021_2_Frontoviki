@@ -143,3 +143,25 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 	}
 	return nil
 }
+
+func (ar *AdvtRepository) Delete(advertId int64) error {
+	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	if err != nil {
+		return internalError.DatabaseError
+	}
+
+	_, err = tx.Exec(context.Background(), "DELETE FROM advert WHERE id = $1;", advertId)
+	if err != nil {
+		if rlbckEr := tx.Rollback(context.Background()); rlbckEr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.DatabaseError
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
