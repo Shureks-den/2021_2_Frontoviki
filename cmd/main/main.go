@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"yula/internal/config"
 	"yula/internal/database"
+	imageloaderRepo "yula/internal/pkg/image_loader/repository"
+	imageloaderUse "yula/internal/pkg/image_loader/usecase"
 	userHttp "yula/internal/pkg/user/delivery/http"
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
@@ -44,14 +46,16 @@ func main() {
 
 	r := mux.NewRouter()
 	r.Use(middleware.CorsMiddleware)
-	r.Use(middleware.JsonMiddleware)
+	r.Use(middleware.ContentTypeMiddleware)
 
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu)

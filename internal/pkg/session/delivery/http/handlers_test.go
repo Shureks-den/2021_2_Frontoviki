@@ -18,6 +18,9 @@ import (
 	sessRep "yula/internal/pkg/session/repository"
 	sessUse "yula/internal/pkg/session/usecase"
 
+	imageloaderRepo "yula/internal/pkg/image_loader/repository"
+	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -57,8 +60,11 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	_, serverErr := uu.Create(testUser)
@@ -113,8 +119,9 @@ func TestSession_SignInHandler_InvalidEmail(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	// сам тест
@@ -164,8 +171,11 @@ func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	// сам тест
@@ -210,8 +220,10 @@ func TestSession_SignInHandler_InvalidBody(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	// сам тест
@@ -254,8 +266,9 @@ func TestSession_LogOutHandler_Success(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	session, err := su.Create(0)
@@ -309,8 +322,11 @@ func TestSession_LogOutHandler_InvalidName(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	session, err := su.Create(0)
@@ -364,8 +380,11 @@ func TestSession_LogOutHandler_InvalidValue(t *testing.T) {
 
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	//&cnfg.TarantoolCfg
-	uu := userUse.NewUserUsecase(ur)
+
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
+	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
 	session, err := su.Create(0)

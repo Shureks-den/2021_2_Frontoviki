@@ -26,8 +26,8 @@ func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
 func (ur *UserRepository) Insert(user *models.UserData) error {
 	ur.m.Lock()
 	row := ur.pool.QueryRow(context.Background(),
-		"INSERT INTO users (email, password, created_at, name, surname) VALUES ($1, $2, $3, $4, $5) RETURNING id;",
-		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname)
+		"INSERT INTO users (email, password, created_at, name, surname, image) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;",
+		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname, user.Image)
 	ur.m.Unlock()
 
 	var id int64

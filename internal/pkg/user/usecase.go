@@ -13,5 +13,5 @@ type UserUsecase interface {
 
 	GetById(id int64) (*models.Profile, error)
 	UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, error)
-	UploadAvatar(file *multipart.FileHeader, userId int64) error // пока не работает
+	UploadAvatar(file *multipart.FileHeader, userId int64) (*models.UserData, error)
 }

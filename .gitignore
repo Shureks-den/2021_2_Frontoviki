@@ -31,3 +31,7 @@
 # Tarantool logs
 *.snap
 *.xlog
+
+# images
+static/avatars/*
+!static/avatars/default_avatar.png

@@ -87,6 +87,27 @@ var (
 		Code:    http.StatusUnauthorized,
 		Message: "unauthorized",
 	}
+
+	// ошибки обработки картинок
+	EmptyImageForm error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "require image",
+	}
+
+	UnknownExtension error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "file format is not allowed (only PNG, JPEG)",
+	}
+
+	UnableToReadFile error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "unable to read file",
+	}
+
+	UnableToRemove error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "unable to remove",
+	}
 )
 
 func ToMetaStatus(err error) (int, string) {
