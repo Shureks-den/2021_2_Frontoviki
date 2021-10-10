@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS advert (
     name text NOT NULL,
     description text NOT NULL DEFAULT '',
 	price int NOT NULL DEFAULT 0,
-    city text NOT NULL DEFAULT 'Moscow',
+    location text NOT NULL DEFAULT 'Moscow',
 	latitude float NOT NULL DEFAULT 55.751244,
 	longitude float NOT NULL DEFAULT 37.618423,
     published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	date_close TIMESTAMP DEFAULT NULL,
+	date_close TIMESTAMP NOT NULL DEFAULT to_timestamp(0),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
 	views int NOT NULL DEFAULT 0,
 	
@@ -70,3 +70,9 @@ CREATE TABLE IF NOT EXISTS price_history (
 	
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
+
+/*
+INSERT INTO category (name) values ('Одежда'), ('Обувь'), ('Животные');
+INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 7), ('Манчкин', 1, 9);
+INSERT INTO advert_image (advert_id, img_path) VALUES (5, 'hudi1'), (5, 'hudi2'), (6, 'manch1');
+*/

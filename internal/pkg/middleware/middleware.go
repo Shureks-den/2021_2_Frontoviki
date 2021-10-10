@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"regexp"
+	"strings"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
@@ -74,16 +76,32 @@ func CorsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func JsonMiddleware(next http.Handler) http.Handler {
+func ContentTypeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if contentType := r.Header.Get("Content-Type"); contentType != "application/json" {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
-			w.WriteHeader(http.StatusBadRequest)
+		relativePath := r.URL.Path
+		contentType := r.Header.Get("Content-Type")
 
-			w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/json required", nil))
-			return
+		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/upload$", relativePath)
+
+		switch {
+		case relativePath == "/users/profile/upload", isImageUpload:
+			log.Println("image upload")
+			if !strings.Contains(contentType, "multipart/form-data") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: multipart/form-data required", nil))
+				return
+			}
+
+		default:
+			if contentType != "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/json required", nil))
+				return
+			}
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		next.ServeHTTP(w, r)
 	})

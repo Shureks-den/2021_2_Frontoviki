@@ -46,5 +46,18 @@ type HttpBodyProfile struct {
 }
 
 type HttpBodyAdvts struct {
-	Advert []*Advert `json:"advert"`
+	Advert []*Advert `json:"adverts"`
+}
+
+type HttpBodyAdvertShort struct {
+	AdvertShort AdvertShort `json:"advert"`
+}
+
+type HttpBodyAdvert struct {
+	Advert Advert `json:"advert"`
+}
+
+type HttpBodyAdvertDetail struct {
+	Advert   Advert  `json:"advert"`
+	Salesman Profile `json:"salesman"`
 }

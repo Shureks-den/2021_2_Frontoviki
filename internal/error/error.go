@@ -36,6 +36,21 @@ var (
 		Message: "not apdated",
 	}
 
+	NotCreated error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "not created",
+	}
+
+	RollbackError error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "rollback error",
+	}
+
+	NotCommited error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "don't commited",
+	}
+
 	// определяем ошибки уровня usecase
 	NotExist error = ServerAnswer{
 		Code:    http.StatusNotFound,
@@ -57,6 +72,11 @@ var (
 		Message: "password mismatch",
 	}
 
+	Conflict error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "unable to access this resource",
+	}
+
 	// определяем ошибки уровня http
 	BadRequest error = ServerAnswer{
 		Code:    http.StatusBadRequest,
@@ -66,6 +86,27 @@ var (
 	Unauthorized error = ServerAnswer{
 		Code:    http.StatusUnauthorized,
 		Message: "unauthorized",
+	}
+
+	// ошибки обработки картинок
+	EmptyImageForm error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "require image",
+	}
+
+	UnknownExtension error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "file format is not allowed (only PNG, JPEG)",
+	}
+
+	UnableToReadFile error = ServerAnswer{
+		Code:    http.StatusBadRequest,
+		Message: "unable to read file",
+	}
+
+	UnableToRemove error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "unable to remove",
 	}
 )
 

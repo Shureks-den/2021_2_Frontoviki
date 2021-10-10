@@ -22,6 +22,9 @@ import (
 	sessRep "yula/internal/pkg/session/repository"
 	sessUse "yula/internal/pkg/session/usecase"
 
+	imageloaderRepo "yula/internal/pkg/image_loader/repository"
+	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -45,10 +48,13 @@ func TestSignUpHandlerValid(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	uh := NewUserHandler(uu, su)
 
 	r := mux.NewRouter()
@@ -106,10 +112,13 @@ func TestSignUpHandlerUserNotValid(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	uh := NewUserHandler(uu, su)
 
 	r := mux.NewRouter()
@@ -176,8 +185,11 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uh := NewUserHandler(uu, su)
@@ -241,10 +253,13 @@ func TestUpdateProfileHandlerFailToAccessPage(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	uh := NewUserHandler(uu, su)
 
 	r := mux.NewRouter()
@@ -303,10 +318,13 @@ func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	uh := NewUserHandler(uu, su)
 
 	r := mux.NewRouter()
@@ -347,10 +365,13 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 	}
 	defer postgres.Close()
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
+	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
+
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur)
+	uu := userUse.NewUserUsecase(ur, ilu)
 	uh := NewUserHandler(uu, su)
 
 	r := mux.NewRouter()

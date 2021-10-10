@@ -5,18 +5,21 @@ import (
 	"time"
 	internalError "yula/internal/error"
 	"yula/internal/models"
+	imageloader "yula/internal/pkg/image_loader"
 	"yula/internal/pkg/user"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUsecase struct {
-	userRepo user.UserRepository
+	userRepo       user.UserRepository
+	imageLoaderUse imageloader.ImageLoaderUsecase
 }
 
-func NewUserUsecase(repo user.UserRepository) user.UserUsecase {
+func NewUserUsecase(repo user.UserRepository, imageLoaderUse imageloader.ImageLoaderUsecase) user.UserUsecase {
 	return &UserUsecase{
-		userRepo: repo,
+		userRepo:       repo,
+		imageLoaderUse: imageLoaderUse,
 	}
 }
 
@@ -42,6 +45,7 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, erro
 	user.Name = userSU.Name
 	user.Surname = userSU.Surname
 	user.CreatedAt = time.Now()
+	user.Image = imageloader.DefaultAvatar
 
 	dbErr := uu.userRepo.Insert(&user)
 
@@ -108,7 +112,7 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 	userNew.Id = userId
 	userNew.Password = userActual.Password
 	userNew.CreatedAt = userActual.CreatedAt
-	userNew.Image = userActual.Image // ??? что делать если и фото будет менять?
+	userNew.Image = userActual.Image
 
 	err = uu.userRepo.Update(userNew)
 	if err != nil {
@@ -118,6 +122,31 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 	return userNew.ToProfile(), nil
 }
 
-func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) error {
-	return nil
+func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) (*models.UserData, error) {
+	user, err := uu.userRepo.SelectById(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// физическая загрузка фотки
+	imageUrl, err := uu.imageLoaderUse.UploadAvatar(file)
+	if err != nil {
+		return nil, err
+	}
+
+	oldAvatar := user.Image
+	if !(oldAvatar == "" || oldAvatar == imageloader.DefaultAvatar) {
+		err = uu.imageLoaderUse.RemoveAvatar(oldAvatar)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	user.Image = imageUrl
+	err = uu.userRepo.Update(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

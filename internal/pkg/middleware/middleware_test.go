@@ -42,7 +42,7 @@ func TestMiddleware_JsonMiddleware_Succsess(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	caller(w, r)
-	mw := JsonMiddleware(caller)
+	mw := ContentTypeMiddleware(caller)
 	mw.ServeHTTP(w, r)
 
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
@@ -56,7 +56,7 @@ func TestMiddleware_JsonMiddleware_NoApplicationJson(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	caller(w, r)
-	mw := JsonMiddleware(caller)
+	mw := ContentTypeMiddleware(caller)
 	mw.ServeHTTP(w, r)
 
 	assert.Equal(t, string(""), w.Header().Get("Content-Type"))
