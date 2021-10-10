@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
@@ -80,9 +81,11 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 		relativePath := r.URL.Path
 		contentType := r.Header.Get("Content-Type")
 
-		switch relativePath {
-		case "/users/profile/upload":
-			log.Println("avatar upload")
+		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/upload$", relativePath)
+
+		switch {
+		case relativePath == "/users/profile/upload", isImageUpload:
+			log.Println("image upload")
 			if !strings.Contains(contentType, "multipart/form-data") {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)

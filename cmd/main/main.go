@@ -54,7 +54,7 @@ func main() {
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-	au := advtUse.NewAdvtUsecase(ar)
+	au := advtUse.NewAdvtUsecase(ar, ilu)
 	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 

@@ -9,4 +9,6 @@ type AdvtRepository interface {
 	SelectById(advertId int64) (*models.Advert, error)
 	Update(newAdvert *models.Advert) error
 	Delete(advertId int64) error
+
+	EditImages(advertId int64, newImages []string) error
 }

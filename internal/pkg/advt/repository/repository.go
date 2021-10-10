@@ -104,7 +104,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 
 	if err != nil {
 		log.Println(err.Error())
-		return nil, internalError.DatabaseError
+		return nil, internalError.EmptyQuery
 	}
 
 	advert.Images = []string{}
@@ -156,6 +156,46 @@ func (ar *AdvtRepository) Delete(advertId int64) error {
 			return internalError.RollbackError
 		}
 		return internalError.DatabaseError
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
+	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	if err != nil {
+		return internalError.DatabaseError
+	}
+
+	// сначала очищаем все картинки у объявления
+	_, err = tx.Exec(context.Background(),
+		"DELETE FROM advert_image WHERE advert_id = $1;",
+		advertId)
+	if err != nil {
+		rollbackErr := tx.Rollback(context.Background())
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.DatabaseError
+	}
+
+	// вставляем в базу новые url картинок
+	for _, image := range newImages {
+		_, err := tx.Exec(context.Background(),
+			"INSERT INTO advert_image (advert_id, img_path) VALUES ($1, $2);",
+			advertId, image)
+		if err != nil {
+			rollbackErr := tx.Rollback(context.Background())
+			if rollbackErr != nil {
+				return internalError.RollbackError
+			}
+			return internalError.DatabaseError
+		}
 	}
 
 	err = tx.Commit(context.Background())

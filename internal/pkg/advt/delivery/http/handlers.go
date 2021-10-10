@@ -38,6 +38,7 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
 
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 }
 
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
@@ -225,4 +226,58 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
+}
+
+func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	defer r.Body.Close()
+	err = r.ParseMultipartForm(8 << 20) // 8Мб
+	if err != nil {
+		log.Println(err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.InternalError)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	if len(r.MultipartForm.File["images"]) == 0 {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	files := r.MultipartForm.File["images"]
+	advert, err := ah.advtUsecase.UploadImages(files, advertId, userId)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	salesman, err := ah.userUsecase.GetById(advert.PublisherId)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
+	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
 }

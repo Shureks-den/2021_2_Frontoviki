@@ -35,3 +35,5 @@
 # images
 static/avatars/*
 !static/avatars/default_avatar.png
+static/advert_images/*
+!static/advert_images/default_image.png

@@ -19,7 +19,7 @@ func NewImageLoaderUsecase(imageLoaderRepo imageloader.ImageLoaderRepository) im
 	}
 }
 
-func (ilu *ImageLoaderUsecase) UploadAvatar(headerFile *multipart.FileHeader) (string, error) {
+func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir string) (string, error) {
 	extension := ""
 
 	ct := headerFile.Header.Get("Content-Type")
@@ -36,14 +36,42 @@ func (ilu *ImageLoaderUsecase) UploadAvatar(headerFile *multipart.FileHeader) (s
 	filename := avatarId + "." + extension
 	log.Println(filename)
 
-	err := ilu.imageLoaderRepo.Insert(headerFile, imageloader.AvatarsDirectory, filename)
+	err := ilu.imageLoaderRepo.Insert(headerFile, dir, filename)
 	if err != nil {
 		return "", err
 	}
 
-	return imageloader.AvatarsDirectory + "/" + filename, nil
+	return dir + "/" + filename, nil
+}
+
+func (ilu *ImageLoaderUsecase) UploadAvatar(headerFile *multipart.FileHeader) (string, error) {
+	url, err := ilu.Upload(headerFile, imageloader.AvatarsDirectory)
+	return url, err
 }
 
 func (ilu *ImageLoaderUsecase) RemoveAvatar(filePath string) error {
 	return ilu.imageLoaderRepo.Delete(filePath)
+}
+
+func (ilu *ImageLoaderUsecase) UploadAdvertImages(headerFiles []*multipart.FileHeader) ([]string, error) {
+	var urls []string
+	for _, file := range headerFiles {
+		url, err := ilu.Upload(file, imageloader.AdvertImageDirectory)
+		if err != nil {
+			return []string{}, err
+		}
+
+		urls = append(urls, url)
+	}
+	return urls, nil
+}
+
+func (ilu *ImageLoaderUsecase) RemoveAdvertImages(imageUrls []string) error {
+	for _, url := range imageUrls {
+		err := ilu.imageLoaderRepo.Delete(url)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
