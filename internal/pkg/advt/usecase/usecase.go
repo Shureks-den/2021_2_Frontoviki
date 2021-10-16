@@ -138,3 +138,24 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 
 	return advert, nil
 }
+
+func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, page *models.Page) ([]*models.Advert, error) {
+	adverts, err := au.advtRepository.SelectAdvertsByPublisherId(publisherId, page.PageNum, page.Count)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(adverts) == 0 {
+		return []*models.Advert{}, nil
+	}
+
+	return adverts, nil
+}
+
+func (au *AdvtUsecase) AdvertsToShort(adverts []*models.Advert) []*models.AdvertShort {
+	var advertsShort []*models.AdvertShort
+	for _, advert := range adverts {
+		advertsShort = append(advertsShort, advert.ToShort())
+	}
+	return advertsShort
+}

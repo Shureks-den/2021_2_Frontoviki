@@ -61,3 +61,8 @@ type HttpBodyAdvertDetail struct {
 	Advert   Advert  `json:"advert"`
 	Salesman Profile `json:"salesman"`
 }
+
+type HttpBodySalesmanPage struct {
+	Salesman Profile        `json:"salesman"`
+	Adverts  []*AdvertShort `json:"adverts"`
+}

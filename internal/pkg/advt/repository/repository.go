@@ -205,3 +205,54 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 
 	return nil
 }
+
+const (
+	defaultAdvertsQueryByPublisherId string = `
+		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path) FROM advert a
+		JOIN category c ON a.category_id = c.Id
+		LEFT JOIN advert_image ai ON a.id = ai.advert_id
+		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name
+		HAVING a.publisher_id = $1 %s %s 
+		LIMIT $2 OFFSET $3;
+	`
+)
+
+func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, offset int64, limit int64) ([]*models.Advert, error) {
+	queryStr := fmt.Sprintf(defaultAdvertsQueryByPublisherId,
+		"AND a.is_active = true",
+		"ORDER BY a.is_active DESC, a.published_at DESC",
+	)
+
+	rows, err := ar.pool.Query(context.Background(), queryStr, publisherId, limit, offset*limit)
+	if err != nil {
+		return nil, internalError.DatabaseError
+	}
+	defer rows.Close()
+
+	var adverts []*models.Advert
+	for rows.Next() {
+		var advert models.Advert
+		var advertPathImages []*string
+
+		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &advertPathImages)
+
+		if err != nil {
+			return nil, internalError.DatabaseError
+		}
+
+		advert.Images = []string{}
+		for _, path := range advertPathImages {
+			if path != nil {
+				advert.Images = append(advert.Images, *path)
+			}
+		}
+
+		adverts = append(adverts, &advert)
+	}
+
+	return adverts, nil
+}

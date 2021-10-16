@@ -40,6 +40,8 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+
+	s.HandleFunc("/salesman/{id:[0-9]+}", ah.SalesmanPageHandler).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
@@ -298,4 +300,54 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
 	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
+}
+
+func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	u, err := url.Parse(r.URL.RequestURI())
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	query := u.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	salesman, err := ah.userUsecase.GetById(salesmanId)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetAdvertListByPublicherId(salesmanId, page)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	shortAdverts := ah.advtUsecase.AdvertsToShort(adverts)
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts}
+	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
 }
