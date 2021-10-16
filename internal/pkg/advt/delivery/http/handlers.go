@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -42,7 +43,24 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 }
 
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
-	advts, err := ah.advtUsecase.GetListAdvt(0, 100, true)
+	u, err := url.Parse(r.URL.RequestURI())
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	query := u.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	advts, err := ah.advtUsecase.GetListAdvt(page.PageNum, page.Count, true)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
