@@ -41,7 +41,7 @@ func (sh *SessionHandler) Routing(r *mux.Router) {
 // @Param user body models.UserSignIn true "User sign in data"
 // @Success 200 {object} models.HttpBodyInterface
 // @failure default {object} models.HttpError
-// @Router /api/v1/signin [post]
+// @Router /signin [post]
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {
 	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var signInUser models.UserSignIn
@@ -118,7 +118,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 // @Produce application/json
 // @Success 200 {object} models.HttpBodyInterface
 // @failure default {object} models.HttpError
-// @Router /api/v1/logout [post]
+// @Router /logout [post]
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
 	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	session, err := r.Cookie("session_id")

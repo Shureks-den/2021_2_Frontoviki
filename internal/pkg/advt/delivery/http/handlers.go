@@ -57,7 +57,7 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 // @Param count query string false "Count adverts per page"
 // @Success 200 {object} models.HttpBodyInterface{body=[]models.Advert}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts [get]
+// @Router /adverts [get]
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.RequestURI())
 	if err != nil {
@@ -102,7 +102,7 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 // @Param new_advert body models.Advert true "Advert"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertShort}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts [post]
+// @Router /adverts [post]
 func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
@@ -156,7 +156,7 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @Param id path integer true "Advert id"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvert}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/{id} [get]
+// @Router /adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	vars := mux.Vars(r)
@@ -206,7 +206,7 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 // @Param advert body models.Advert true "New advert"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvert}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/{id} [post]
+// @Router /adverts/{id} [post]
 func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
@@ -279,7 +279,7 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 // @Param id path integer true "Advert id"
 // @Success 200 {object} models.HttpBodyInterface
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/{id} [delete]
+// @Router /adverts/{id} [delete]
 func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
@@ -322,7 +322,7 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @Param id path integer true "Advert id"
 // @Success 200 {object} models.HttpBodyInterface
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/{id}/close [post]
+// @Router /adverts/{id}/close [post]
 func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
@@ -366,7 +366,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 // @Param images formData file true "Uploaded images"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertDetail{advert=models.Advert,salesman=models.Profile}}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/{id}/upload [post]
+// @Router /adverts/{id}/upload [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
@@ -441,7 +441,7 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 // @Param count query string false "Count adverts per page"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodySalesmanPage{salesman=models.Profile,adverts=[]models.AdvertShort}}
 // @failure default {object} models.HttpError
-// @Router /api/v1/adverts/salesman/{id} [get]
+// @Router /adverts/salesman/{id} [get]
 func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)

@@ -75,7 +75,7 @@ func main() {
 	r := mux.NewRouter()
 	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
-	api := r.PathPrefix("/api/v1").Subrouter()
+	api := mux.NewRouter()
 
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)

@@ -49,7 +49,7 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 // @Param user body models.UserSignUp true "User sign up data"
 // @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
 // @failure default {object} models.HttpError
-// @Router /api/v1/signup [post]
+// @Router /signup [post]
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var signUpUser models.UserSignUp
 	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
@@ -121,7 +121,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 // @Produce application/json
 // @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
 // @failure default {object} models.HttpError
-// @Router /api/v1/users/profile [get]
+// @Router /users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
@@ -155,7 +155,7 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 // @Param profile body models.Profile true "New profile"
 // @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
 // @failure default {object} models.HttpError
-// @Router /api/v1/users/profile [post]
+// @Router /users/profile [post]
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	uh.logger.WithFields((r.Context().Value("logger fields")).(logrus.Fields))
@@ -210,7 +210,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 // @Param avatar formData file true "Uploaded avatar"
 // @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
 // @failure default {object} models.HttpError
-// @Router /api/v1/users/profile/upload [post]
+// @Router /users/profile/upload [post]
 func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.Request) {
 	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
