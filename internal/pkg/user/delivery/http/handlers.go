@@ -33,10 +33,18 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost, http.MethodOptions)
-	// r.Handle("profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost)
-	// - пока не работает
 }
 
+// SignUpHandler godoc
+// @Summary Sign up
+// @Description Sign up
+// @Tags auth
+// @Accept application/json
+// @Produce application/json
+// @Param user body models.UserSignUp true "User sign up data"
+// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @failure default {object} models.HttpError
+// @Router /api/v1/signup [post]
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var signUpUser models.UserSignUp
 
@@ -92,6 +100,15 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
 }
 
+// GetProfileHandler godoc
+// @Summary Get user's profile
+// @Description Get user's profile
+// @Tags user
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @failure default {object} models.HttpError
+// @Router /api/v1/users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -113,6 +130,16 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 	w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
 }
 
+// GetProfileHandler godoc
+// @Summary Get user's profile
+// @Description Get user's profile
+// @Tags user
+// @Accept application/json
+// @Produce application/json
+// @Param profile body models.Profile true "New profile"
+// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @failure default {object} models.HttpError
+// @Router /api/v1/users/profile [post]
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -152,6 +179,16 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 	w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
 }
 
+// GetProfileHandler godoc
+// @Summary Get user's profile
+// @Description Get user's profile
+// @Tags user
+// @Accept application/json
+// @Produce application/json
+// @Param avatar formData file true "Uploaded avatar"
+// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @failure default {object} models.HttpError
+// @Router /api/v1/users/profile/upload [post]
 func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -39,10 +40,40 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+
+	s.HandleFunc("/salesman/{id:[0-9]+}", ah.SalesmanPageHandler).Methods(http.MethodGet, http.MethodOptions)
 }
 
+// AdvertListHandler godoc
+// @Summary Get list of all adverts
+// @Description Get list of all adverts
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=[]models.Advert}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts [get]
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
-	advts, err := ah.advtUsecase.GetListAdvt(0, 100, true)
+	u, err := url.Parse(r.URL.RequestURI())
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	query := u.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	advts, err := ah.advtUsecase.GetListAdvt(page.PageNum, page.Count, true)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -51,10 +82,20 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	}
 	w.WriteHeader(http.StatusOK)
 
-	body := models.HttpBodyAdvts{Advert: advts}
+	body := models.HttpBodyAdverts{Advert: advts}
 	w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
 }
 
+// CreateAdvertHandler godoc
+// @Summary Create advert
+// @Description Create advert
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param new_advert body models.Advert true "Advert"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertShort}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts [post]
 func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -91,6 +132,16 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusCreated, "advert created successfully", body))
 }
 
+// AdvertDetailHandler godoc
+// @Summary Get detail advert
+// @Description Get detail advert
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvert}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
@@ -122,6 +173,17 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 }
 
+// AdvertUpdateHandler godoc
+// @Summary Update advert
+// @Description Update advert
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Param advert body models.Advert true "New advert"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvert}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/{id} [post]
 func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -174,6 +236,16 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusCreated, "advert updated successfully", body))
 }
 
+// DeleteAdvertHandler godoc
+// @Summary Delete advert
+// @Description Delete advert
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/{id} [delete]
 func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -201,6 +273,16 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 	w.Write(models.ToBytes(http.StatusOK, "advert deleted successfully", nil))
 }
 
+// CloseAdvertHandler godoc
+// @Summary Close advert
+// @Description Close advert
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/{id}/close [post]
 func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -228,6 +310,17 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 	w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
 }
 
+// UploadImageHandler godoc
+// @Summary Upload images for advert
+// @Description Upload images for advert
+// @Tags advert
+// @Accept multipart/form-data
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Param images formData file true "Uploaded images"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertDetail{advert=models.Advert,salesman=models.Profile}}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/{id}/upload [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
@@ -280,4 +373,66 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
 	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
+}
+
+// SalesmanPageHandler godoc
+// @Summary Get salesman page and his adverts
+// @Description Get salesman page and his adverts
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Salesman id"
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodySalesmanPage{salesman=models.Profile,adverts=[]models.AdvertShort}}
+// @failure default {object} models.HttpError
+// @Router /api/v1/adverts/salesman/{id} [get]
+func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	u, err := url.Parse(r.URL.RequestURI())
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	query := u.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	salesman, err := ah.userUsecase.GetById(salesmanId)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetAdvertListByPublicherId(salesmanId, page)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	shortAdverts := ah.advtUsecase.AdvertsToShort(adverts)
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts}
+	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
 }

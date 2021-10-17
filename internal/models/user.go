@@ -28,6 +28,7 @@ type UserSignUp struct {
 }
 
 type Profile struct {
+	Id        int64     `json:"id" valid:"-"`
 	Email     string    `json:"email" valid:"email"`
 	CreatedAt time.Time `json:"created_at" valid:"-"`
 	Name      string    `json:"name" valid:"type(string),minstringlength(2)"`
@@ -38,7 +39,7 @@ type Profile struct {
 
 func (user *UserData) ToProfile() *Profile {
 	return &Profile{
-		Email: user.Email, CreatedAt: user.CreatedAt, Name: user.Name,
+		Id: user.Id, Email: user.Email, CreatedAt: user.CreatedAt, Name: user.Name,
 		Surname: user.Surname, Image: user.Image, Rating: user.Rating,
 	}
 }

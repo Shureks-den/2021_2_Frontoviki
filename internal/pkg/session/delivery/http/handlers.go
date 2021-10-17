@@ -29,6 +29,16 @@ func (sh *SessionHandler) Routing(r *mux.Router) {
 	r.HandleFunc("/logout", sh.LogOutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
+// SignInHandler godoc
+// @Summary Sign in
+// @Description Sign in
+// @Tags auth
+// @Accept application/json
+// @Produce application/json
+// @Param user body models.UserSignIn true "User sign in data"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /api/v1/signin [post]
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {
 	var signInUser models.UserSignIn
 
@@ -90,6 +100,15 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(models.ToBytes(http.StatusOK, "signin successfully", nil))
 }
 
+// SignInHandler godoc
+// @Summary Log out
+// @Description Log out
+// @Tags auth
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /api/v1/logout [post]
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("session_id")
 	if err != nil {

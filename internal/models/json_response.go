@@ -31,13 +31,13 @@ func ToBytes(code int, message string, body interface{}) []byte {
 }
 
 type HttpError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int    `json:"code" enums:"400,401,403,404,409,500"`
+	Message string `json:"message" example:"bad request"`
 }
 
 type HttpBodyInterface struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
+	Code    int         `json:"code" enums:"200,201"`
+	Message string      `json:"message" enums:"success,created"`
 	Body    interface{} `json:"body"`
 }
 
@@ -45,7 +45,7 @@ type HttpBodyProfile struct {
 	Profile Profile `json:"profile"`
 }
 
-type HttpBodyAdvts struct {
+type HttpBodyAdverts struct {
 	Advert []*Advert `json:"adverts"`
 }
 
@@ -60,4 +60,9 @@ type HttpBodyAdvert struct {
 type HttpBodyAdvertDetail struct {
 	Advert   Advert  `json:"advert"`
 	Salesman Profile `json:"salesman"`
+}
+
+type HttpBodySalesmanPage struct {
+	Salesman Profile        `json:"salesman"`
+	Adverts  []*AdvertShort `json:"adverts"`
 }
