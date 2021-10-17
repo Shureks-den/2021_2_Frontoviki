@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 	"yula/internal/config"
 	"yula/internal/database"
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
@@ -34,13 +32,7 @@ import (
 )
 
 func init() {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-2], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Fatal("No .env file found")
 	}
 
@@ -103,7 +95,7 @@ func main() {
 
 	//http
 	fmt.Println("start serving ::8080")
-	error := http.ListenAndServe(":8080", r)
+	error := http.ListenAndServe(":8080", api)
 
 	// //https
 	// fmt.Println("start serving ::5000")
