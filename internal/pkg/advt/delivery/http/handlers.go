@@ -2,29 +2,32 @@ package http
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
+	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/user"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type AdvertHandler struct {
 	advtUsecase advt.AdvtUsecase
 	userUsecase user.UserUsecase
+	logger      logging.Logger
 }
 
-func NewAdvertHandler(advtUsecase advt.AdvtUsecase, userUsecase user.UserUsecase) *AdvertHandler {
+func NewAdvertHandler(advtUsecase advt.AdvtUsecase, userUsecase user.UserUsecase, logger logging.Logger) *AdvertHandler {
 	return &AdvertHandler{
 		advtUsecase: advtUsecase,
 		userUsecase: userUsecase,
+		logger:      logger,
 	}
 }
 
@@ -74,8 +77,11 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	advts, err := ah.advtUsecase.GetListAdvt(page.PageNum, page.Count, true)
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	if err != nil {
+		ah.logger.Warnf("get list advt error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -84,6 +90,7 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 
 	body := models.HttpBodyAdverts{Advert: advts}
 	w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	ah.logger.Info("adverts found successfully")
 }
 
 // CreateAdvertHandler godoc
@@ -97,6 +104,7 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts [post]
 func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -106,7 +114,9 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&advert)
 	if err != nil {
+		ah.logger.Warnf("invalid body: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -114,14 +124,18 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	_, err = govalidator.ValidateStruct(advert)
 	if err != nil {
+		ah.logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
 
 	err = ah.advtUsecase.CreateAdvert(userId, &advert)
 	if err != nil {
+		ah.logger.Infof("can not create adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -130,6 +144,7 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertShort{AdvertShort: *advert.ToShort()}
 	w.Write(models.ToBytes(http.StatusCreated, "advert created successfully", body))
+	ah.logger.Debug("advert created successfully")
 }
 
 // AdvertDetailHandler godoc
@@ -143,10 +158,13 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
+		ah.logger.Warnf("can not parse id adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -154,7 +172,9 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 
 	advert, err := ah.advtUsecase.GetAdvert(advertId)
 	if err != nil {
+		ah.logger.Warnf("can not get adv by advId: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -162,7 +182,9 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 
 	salesman, err := ah.userUsecase.GetById(advert.PublisherId)
 	if err != nil {
+		ah.logger.Warnf("can not parse id adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -171,6 +193,7 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
+	ah.logger.Debug("advert found successfully")
 }
 
 // AdvertUpdateHandler godoc
@@ -185,6 +208,7 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts/{id} [post]
 func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -193,7 +217,9 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
+		ah.logger.Warnf("can not parse adv id: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -203,29 +229,36 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 	defer r.Body.Close()
 	err = json.NewDecoder(r.Body).Decode(&newAdvert)
 	if err != nil {
+		ah.logger.Warnf("can not decode adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
 	if newAdvert.PublisherId != userId {
+		ah.logger.Info("no rights to access")
 		w.WriteHeader(http.StatusOK)
+
 		w.Write(models.ToBytes(http.StatusConflict, "no rights to access", nil))
 		return
 	}
 
 	_, err = govalidator.ValidateStruct(newAdvert)
 	if err != nil {
-		log.Println(err.Error())
+		ah.logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
 
 	err = ah.advtUsecase.UpdateAdvert(advertId, &newAdvert)
 	if err != nil {
+		ah.logger.Warnf("bad update adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -234,6 +267,7 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvert{Advert: newAdvert}
 	w.Write(models.ToBytes(http.StatusCreated, "advert updated successfully", body))
+	ah.logger.Debug("advert updated successfully")
 }
 
 // DeleteAdvertHandler godoc
@@ -247,6 +281,7 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts/{id} [delete]
 func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -255,7 +290,9 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
+		ah.logger.Warnf("can not parse adv id: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -263,7 +300,9 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	err = ah.advtUsecase.DeleteAdvert(advertId, userId)
 	if err != nil {
+		ah.logger.Warnf("can not delete adv with id %d: %s", advertId, err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -271,6 +310,7 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "advert deleted successfully", nil))
+	ah.logger.Debug("advert deleted successfully")
 }
 
 // CloseAdvertHandler godoc
@@ -284,6 +324,7 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts/{id}/close [post]
 func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -292,7 +333,9 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
+		ah.logger.Warnf("can not parse adv id: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -300,7 +343,9 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 
 	err = ah.advtUsecase.CloseAdvert(advertId, userId)
 	if err != nil {
+		ah.logger.Warnf("can not close adv with id %d: %s", advertId, err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -308,6 +353,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
+	ah.logger.Debug("advert closed successfully")
 }
 
 // UploadImageHandler godoc
@@ -322,6 +368,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /api/v1/adverts/{id}/upload [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -339,15 +386,18 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	defer r.Body.Close()
 	err = r.ParseMultipartForm(8 << 20) // 8Мб
 	if err != nil {
-		log.Println(err.Error())
+		ah.logger.Warnf("can not parse adv id: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.InternalError)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
 	if len(r.MultipartForm.File["images"]) == 0 {
+		ah.logger.Warnf("empty image form: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -356,7 +406,9 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	files := r.MultipartForm.File["images"]
 	advert, err := ah.advtUsecase.UploadImages(files, advertId, userId)
 	if err != nil {
+		ah.logger.Warnf("user %d can not upload image in adv %d: %s", userId, advertId, err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -364,7 +416,9 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 
 	salesman, err := ah.userUsecase.GetById(advert.PublisherId)
 	if err != nil {
+		ah.logger.Warnf("can not get user by id %d: %s", advert.PublisherId, err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -373,6 +427,7 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
 	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
+	ah.logger.Debug("image uploaded successfully")
 }
 
 // SalesmanPageHandler godoc

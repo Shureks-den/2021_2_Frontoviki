@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"yula/internal/config"
 	"yula/internal/database"
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+	"yula/internal/pkg/logging"
 	userHttp "yula/internal/pkg/user/delivery/http"
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
@@ -32,8 +35,13 @@ import (
 
 func init() {
 	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("No .env file found")
+	pwd, err := os.Getwd()
+	folders := strings.Split(pwd, "/")
+	pwd = strings.Join(folders[:len(folders)-2], "/")
+	fmt.Println(pwd, err)
+
+	if err := godotenv.Load(pwd + "/.env"); err != nil {
+		log.Fatal("No .env file found")
 	}
 
 	govalidator.SetFieldsRequiredByDefault(true)
@@ -54,10 +62,12 @@ func init() {
 // @host 127.0.0.1:8080
 // @BasePath /
 func main() {
+	logger := logging.GetLogger()
+
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Fatalf("db error instance", err.Error())
 		return
 	}
 	defer postgres.Close()
@@ -69,6 +79,7 @@ func main() {
 
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
+	api.Use(middleware.LoggerMiddleware)
 
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
@@ -80,9 +91,9 @@ func main() {
 	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 
-	ah := advtHttp.NewAdvertHandler(au, uu)
-	uh := userHttp.NewUserHandler(uu, su)
-	sh := sessHttp.NewSessionHandler(su, uu)
+	ah := advtHttp.NewAdvertHandler(au, uu, logger)
+	uh := userHttp.NewUserHandler(uu, su, logger)
+	sh := sessHttp.NewSessionHandler(su, uu, logger)
 
 	sm := middleware.NewSessionMiddleware(su)
 
@@ -98,5 +109,5 @@ func main() {
 	// fmt.Println("start serving ::5000")
 	// error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
 
-	fmt.Println(error)
+	logger.Errorf("http serve error %v", error)
 }

@@ -1,14 +1,17 @@
 package delivery
 
 import (
+	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	internalError "yula/internal/error"
 	"yula/internal/models"
+	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
@@ -17,12 +20,14 @@ import (
 type UserHandler struct {
 	userUsecase    user.UserUsecase
 	sessionUsecase session.SessionUsecase
+	logger         logging.Logger
 }
 
-func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.SessionUsecase) *UserHandler {
+func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.SessionUsecase, logger logging.Logger) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
 		sessionUsecase: sessionUsecase,
+		logger:         logger,
 	}
 }
 
@@ -47,10 +52,12 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 // @Router /api/v1/signup [post]
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var signUpUser models.UserSignUp
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&signUpUser)
 	if err != nil {
+		uh.logger.Warnf("bad request: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
@@ -60,6 +67,10 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = govalidator.ValidateStruct(signUpUser)
 	if err != nil {
+		buf := new(bytes.Buffer)
+		json.NewEncoder(buf).Encode(signUpUser)
+		uh.logger.Warnf("invalid data: %s", buf.String())
+
 		w.WriteHeader(http.StatusOK)
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
@@ -67,6 +78,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, servErr := uh.userUsecase.Create(&signUpUser)
 	if servErr != nil {
+		uh.logger.Warnf("can not create user: %s", servErr.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(servErr)
@@ -76,6 +88,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	userSession, err := uh.sessionUsecase.Create(user.Id)
 	if err != nil {
+		uh.logger.Warnf("can not create session based on user %d: %s", user.Id, err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -97,6 +110,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
 	w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
+	uh.logger.Debugf("user %d created successfully", user.Id)
 }
 
 // GetProfileHandler godoc
@@ -110,12 +124,14 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
 
 	profile, err := uh.userUsecase.GetById(userId)
 	if err != nil {
+		uh.logger.Warnf("can not get user with id %d: %s", userId, err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -127,6 +143,7 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 
 	body := models.HttpBodyProfile{Profile: *profile}
 	w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
+	uh.logger.Debugf("user %d created successfully", userId)
 }
 
 // GetProfileHandler godoc
@@ -141,6 +158,7 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 // @Router /api/v1/users/profile [post]
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
+	uh.logger.WithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
@@ -149,6 +167,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&userNew)
 	if err != nil {
+		uh.logger.Warnf("bad request: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
@@ -158,13 +177,16 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 	_, err = govalidator.ValidateStruct(userNew)
 	if err != nil {
+		uh.logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
 
 	profile, err := uh.userUsecase.UpdateProfile(userId, &userNew)
 	if err != nil {
+		uh.logger.Warnf("can not update profile: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -176,6 +198,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 	body := models.HttpBodyProfile{Profile: *profile}
 	w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
+	uh.logger.Debugf("user %d profile updated", userId)
 }
 
 // GetProfileHandler godoc
@@ -189,6 +212,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /api/v1/users/profile/upload [post]
 func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.Request) {
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -197,15 +221,18 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 	defer r.Body.Close()
 	err := r.ParseMultipartForm(2 << 20) // 2Мб
 	if err != nil {
-		log.Println(err.Error())
+		uh.logger.Warnf("can not parsemultipart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.InternalError)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
 	if len(r.MultipartForm.File["avatar"]) == 0 {
+		uh.logger.Warnf("avatar len is 0: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -214,7 +241,9 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 	file := r.MultipartForm.File["avatar"][0]
 	user, err := uh.userUsecase.UploadAvatar(file, userId)
 	if err != nil {
+		uh.logger.Warnf("can not upload user %d avatar: %s", userId, err.Error())
 		w.WriteHeader(http.StatusOK)
+
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -223,4 +252,5 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
 	w.Write(models.ToBytes(http.StatusOK, "avatar uploaded successfully", body))
+	uh.logger.Debugf("user %d avatar uploaded successfully", userId)
 }

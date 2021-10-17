@@ -2,13 +2,16 @@ package middleware
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
-	"log"
+	"github.com/sirupsen/logrus"
 )
 
 type contextKey string
@@ -53,8 +56,8 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 
 		// то есть если нашли куку и она валидна, запишем ее в контекст
 		// чтобы затем использовать в последующих обработчиках
-		ctx := context.WithValue(r.Context(), ContextUserId, session.UserId)
-		r = r.WithContext(ctx)
+		ctxId := context.WithValue(r.Context(), ContextUserId, session.UserId)
+		r = r.WithContext(ctxId)
 
 		next.ServeHTTP(w, r)
 	})
@@ -104,5 +107,19 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 
 		w.Header().Set("Content-Type", "application/json")
 		next.ServeHTTP(w, r)
+	})
+}
+
+func LoggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		x_request_id := fmt.Sprint("", rand.Int())
+		ctx := context.WithValue(r.Context(), "logger fields",
+			logrus.Fields{
+				"x_request_id": x_request_id,
+				"method":       r.Method,
+				"url":          r.URL.Path,
+			})
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
