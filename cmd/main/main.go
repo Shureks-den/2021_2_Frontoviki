@@ -65,9 +65,10 @@ func main() {
 	defer postgres.Close()
 
 	r := mux.NewRouter()
-	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
-	api := mux.NewRouter()
+	r.PathPrefix("/swagger").HandlerFunc(httpSwagger.WrapHandler)
+
+	api := r.PathPrefix("").Subrouter()
 
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
@@ -95,7 +96,7 @@ func main() {
 
 	//http
 	fmt.Println("start serving ::8080")
-	error := http.ListenAndServe(":8080", api)
+	error := http.ListenAndServe(":8080", r)
 
 	// //https
 	// fmt.Println("start serving ::5000")
