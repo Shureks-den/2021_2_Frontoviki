@@ -1,11 +1,12 @@
 /*
+DROP TABLE cart;
 DROP TABLE price_history;
 DROP TABLE favorite;
 DROP TABLE advert_image;
 DROP TABLE advert;
-DROP TABLE category;
-DROP TABLE users;
-*/
+DROP TABLE category;*/
+--DROP TABLE users;
+
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS advert (
 	date_close TIMESTAMP NOT NULL DEFAULT to_timestamp(0),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
 	views int NOT NULL DEFAULT 0,
+	amount int NOT NULL DEFAULT 1,
 	
     publisher_id INT NOT NULL,
 	category_id INT NOT NULL,
@@ -71,8 +73,18 @@ CREATE TABLE IF NOT EXISTS price_history (
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS cart (
+	user_id int NOT NULL,
+	advert_id int NOT NULL,
+	amount int NOT NULL,
+	
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
+);
+
+SELECT * FROM cart;
+
 /*
 INSERT INTO category (name) values ('Одежда'), ('Обувь'), ('Животные');
-INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 7), ('Манчкин', 1, 9);
-INSERT INTO advert_image (advert_id, img_path) VALUES (5, 'hudi1'), (5, 'hudi2'), (6, 'manch1');
-*/
+INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 1), ('Манчкин', 1, 3);
+INSERT INTO advert_image (advert_id, img_path) VALUES (1, 'hudi1'), (1, 'hudi2'), (2, 'manch1');*/
