@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"log"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -25,7 +24,6 @@ func NewAdvtUsecase(advtRepository advt.AdvtRepository, imageLoaderUsecase image
 func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error) {
 	advts, err := au.advtRepository.SelectListAdvt(newest, from, count)
 	if err != nil {
-		log.Println("invalid data from SelectListAdvt")
 		return nil, err
 	}
 
@@ -38,9 +36,11 @@ func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*mod
 
 func (au *AdvtUsecase) CreateAdvert(userId int64, advert *models.Advert) error {
 	advert.PublisherId = userId
+	if advert.Amount == 0 {
+		advert.Amount = 1
+	}
 	err := au.advtRepository.Insert(advert)
 	if err != nil {
-		log.Println("advert not created")
 		return err
 	}
 	return nil

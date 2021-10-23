@@ -40,3 +40,6 @@ static/advert_images/*
 
 # ignore swagger docs
 docs
+
+# ignore logs
+logs

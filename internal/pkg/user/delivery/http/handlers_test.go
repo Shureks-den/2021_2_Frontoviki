@@ -15,6 +15,7 @@ import (
 	"yula/internal/database"
 	"yula/internal/models"
 
+	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
@@ -32,6 +33,7 @@ import (
 
 func TestSignUpHandlerValid(t *testing.T) {
 	// loads values from .env into the system
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -55,9 +57,10 @@ func TestSignUpHandlerValid(t *testing.T) {
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
+	r.Use(middleware.LoggerMiddleware)
 	sm := middleware.NewSessionMiddleware(su)
 	uh.Routing(r, sm)
 
@@ -95,6 +98,7 @@ func TestSignUpHandlerValid(t *testing.T) {
 }
 
 func TestSignUpHandlerUserNotValid(t *testing.T) {
+	logger := logging.GetLogger()
 	// loads values from .env into the system
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
@@ -119,9 +123,10 @@ func TestSignUpHandlerUserNotValid(t *testing.T) {
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
+	r.Use(middleware.LoggerMiddleware)
 	sm := middleware.NewSessionMiddleware(su)
 	uh.Routing(r, sm)
 
@@ -139,7 +144,6 @@ func TestSignUpHandlerUserNotValid(t *testing.T) {
 		t.Fatalf("Could not serialize error from response")
 	}
 	assert.Equal(t, resError.Code, 400)
-	assert.Equal(t, resError.Message, "EOF")
 }
 
 func TestSignUpHandlerDBConnectionNotOpened(t *testing.T) {
@@ -168,6 +172,7 @@ func TestSignUpHandlerDBConnectionNotOpened(t *testing.T) {
 }
 
 func TestSignUpHandlerSameEmail(t *testing.T) {
+	logger := logging.GetLogger()
 	// loads values from .env into the system
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
@@ -192,9 +197,10 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 	uu := userUse.NewUserUsecase(ur, ilu)
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
+	r.Use(middleware.LoggerMiddleware)
 	sm := middleware.NewSessionMiddleware(su)
 	uh.Routing(r, sm)
 
@@ -231,11 +237,11 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not serialize error from response")
 	}
-	assert.Equal(t, resError.Code, 409)
-	assert.Equal(t, resError.Message, "user with this email already exist")
+	assert.Equal(t, resError.Code, 403)
 }
 
 func TestUpdateProfileHandlerFailToAccessPage(t *testing.T) {
+	logger := logging.GetLogger()
 	// loads values from .env into the system
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
@@ -260,9 +266,10 @@ func TestUpdateProfileHandlerFailToAccessPage(t *testing.T) {
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
+	r.Use(middleware.LoggerMiddleware)
 	s := r.PathPrefix("/users").Subrouter()
 	s.Handle("/profile", http.HandlerFunc(uh.UpdateProfileHandler))
 
@@ -297,10 +304,10 @@ func TestUpdateProfileHandlerFailToAccessPage(t *testing.T) {
 		t.Fatalf("Could not serialize error from response")
 	}
 	assert.Equal(t, resError.Code, 404)
-	assert.Equal(t, resError.Message, "user with this email not exist")
 }
 
 func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
+	logger := logging.GetLogger()
 	// loads values from .env into the system
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
@@ -325,9 +332,10 @@ func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
+	r.Use(middleware.LoggerMiddleware)
 	s := r.PathPrefix("/users").Subrouter()
 	s.Handle("/profile", http.HandlerFunc(uh.UpdateProfileHandler))
 
@@ -344,11 +352,11 @@ func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
 		t.Fatalf("Could not serialize error from response")
 	}
 	assert.Equal(t, resError.Code, 400)
-	assert.Equal(t, resError.Message, "EOF")
 }
 
 func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 	// loads values from .env into the system
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -372,10 +380,10 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	su := sessUse.NewSessionUsecase(sr)
 	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su)
+	uh := NewUserHandler(uu, su, logger)
 
 	r := mux.NewRouter()
-
+	r.Use(middleware.LoggerMiddleware)
 	s := r.PathPrefix("/users").Subrouter()
 	s.Handle("/profile", http.HandlerFunc(uh.GetProfileHandler))
 
@@ -397,6 +405,4 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 		t.Fatalf("Could not serialize error from response")
 	}
 	assert.Equal(t, resError.Code, 404)
-	assert.Equal(t, resError.Message, "user with this email not exist")
-
 }

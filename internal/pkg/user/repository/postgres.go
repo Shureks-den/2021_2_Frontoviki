@@ -25,6 +25,7 @@ func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
 
 func (ur *UserRepository) Insert(user *models.UserData) error {
 	ur.m.Lock()
+	log.Println(user)
 	row := ur.pool.QueryRow(context.Background(),
 		"INSERT INTO users (email, password, created_at, name, surname, image) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;",
 		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname, user.Image)
@@ -32,8 +33,6 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
-
-		log.Println("unable to insert", err.Error())
 		return internalError.DatabaseError
 	}
 
@@ -85,7 +84,6 @@ func (ur *UserRepository) Update(user *models.UserData) error {
 		user.Id, user.Email, user.Password, user.Name, user.Surname, user.Image)
 
 	if err != nil {
-		log.Fatalf(err.Error())
 		return internalError.InvalidQuery
 	}
 

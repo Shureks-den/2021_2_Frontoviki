@@ -8,6 +8,7 @@ import (
 	"yula/internal/database"
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+	"yula/internal/pkg/logging"
 	userHttp "yula/internal/pkg/user/delivery/http"
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
@@ -21,6 +22,10 @@ import (
 	advtRep "yula/internal/pkg/advt/repository"
 	advtUse "yula/internal/pkg/advt/usecase"
 
+	cartHttp "yula/internal/pkg/cart/delivery/http"
+	cartRep "yula/internal/pkg/cart/repository"
+	cartUse "yula/internal/pkg/cart/usecase"
+
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -31,9 +36,8 @@ import (
 )
 
 func init() {
-	// loads values from .env into the system
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("No .env file found")
+		log.Fatal("No .env file found")
 	}
 
 	govalidator.SetFieldsRequiredByDefault(true)
@@ -54,41 +58,49 @@ func init() {
 // @host 127.0.0.1:8080
 // @BasePath /
 func main() {
+	logger := logging.GetLogger()
+
 	cnfg := config.NewConfig()
 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Fatalf("db error instance", err.Error())
 		return
 	}
 	defer postgres.Close()
 
 	r := mux.NewRouter()
-	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
-	api := r.PathPrefix("/api/v1").Subrouter()
+	r.PathPrefix("/swagger").HandlerFunc(httpSwagger.WrapHandler)
+
+	api := r.PathPrefix("").Subrouter()
 
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
+	api.Use(middleware.LoggerMiddleware)
 
+	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	ilr := imageloaderRepo.NewImageLoaderRepository()
+	cr := cartRep.NewCartRepository(postgres.GetDbPool())
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)
 	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
+	cu := cartUse.NewCartUsecase(cr)
 
-	ah := advtHttp.NewAdvertHandler(au, uu)
-	uh := userHttp.NewUserHandler(uu, su)
-	sh := sessHttp.NewSessionHandler(su, uu)
+	ah := advtHttp.NewAdvertHandler(au, uu, logger)
+	uh := userHttp.NewUserHandler(uu, su, logger)
+	sh := sessHttp.NewSessionHandler(su, uu, logger)
+	ch := cartHttp.NewCartHandler(cu, uu, au, logger)
 
 	sm := middleware.NewSessionMiddleware(su)
 
 	ah.Routing(api, sm)
 	uh.Routing(api, sm)
 	sh.Routing(api)
+	ch.Routing(api, sm)
 
 	//http
 	fmt.Println("start serving ::8080")
@@ -98,5 +110,5 @@ func main() {
 	// fmt.Println("start serving ::5000")
 	// error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
 
-	fmt.Println(error)
+	logger.Errorf("http serve error %v", error)
 }

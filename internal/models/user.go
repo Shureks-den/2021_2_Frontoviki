@@ -7,7 +7,7 @@ import (
 type UserData struct {
 	Id        int64     `json:"id" valid:"-"`
 	Email     string    `json:"email" valid:"email"`
-	Password  string    `json:"password" valid:"type(string),minstringlength(4)"`
+	Password  string    `json:"password" valid:"type(string),minstringlength(4),optional"`
 	CreatedAt time.Time `json:"created_at" valid:"-"`
 	Name      string    `json:"name" valid:"type(string),minstringlength(2)"`
 	Surname   string    `json:"surname" valid:"type(string),minstringlength(2)"`
@@ -42,4 +42,10 @@ func (user *UserData) ToProfile() *Profile {
 		Id: user.Id, Email: user.Email, CreatedAt: user.CreatedAt, Name: user.Name,
 		Surname: user.Surname, Image: user.Image, Rating: user.Rating,
 	}
+}
+
+type ChangePassword struct {
+	Email       string `json:"email" valid:"email"`
+	Password    string `json:"password" valid:"type(string),minstringlength(4)"`
+	NewPassword string `json:"new_password" valid:"type(string),minstringlength(4)"`
 }

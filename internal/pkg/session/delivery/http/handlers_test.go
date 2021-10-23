@@ -12,6 +12,8 @@ import (
 	"yula/internal/config"
 	"yula/internal/database"
 	"yula/internal/models"
+	"yula/internal/pkg/logging"
+	"yula/internal/pkg/middleware"
 	userRep "yula/internal/pkg/user/repository"
 	userUse "yula/internal/pkg/user/usecase"
 
@@ -28,13 +30,14 @@ import (
 
 var password = "c0mplex"
 var testUser = &models.UserSignUp{
-	Email:    "test@email.com",
+	Email:    "test15@email.com",
 	Password: password,
 	Name:     "test",
 	Surname:  "surtest",
 }
 
 func TestSession_SignInHandler_Success(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -54,7 +57,8 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 	bytes := bytes.NewReader([]byte(fmt.Sprintf(`
 	{
 		"email": "test@email.com",
-		"password": "%s"
+		"password": "%s",
+		""
 	}
 	`, password)))
 
@@ -76,8 +80,10 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 	r := httptest.NewRequest("POST", "/signin", bytes)
 	w := httptest.NewRecorder()
 
+	sh := NewSessionHandler(su, uu, logger)
+
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
 	sh.Routing(router)
 
 	sh.SignInHandler(w, r)
@@ -94,6 +100,7 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 }
 
 func TestSession_SignInHandler_InvalidEmail(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -129,7 +136,8 @@ func TestSession_SignInHandler_InvalidEmail(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.SignInHandler(w, r)
@@ -146,6 +154,7 @@ func TestSession_SignInHandler_InvalidEmail(t *testing.T) {
 }
 
 func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -183,7 +192,8 @@ func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.SignInHandler(w, r)
@@ -200,6 +210,7 @@ func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
 }
 
 func TestSession_SignInHandler_InvalidBody(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -231,7 +242,8 @@ func TestSession_SignInHandler_InvalidBody(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.SignInHandler(w, r)
@@ -248,6 +260,7 @@ func TestSession_SignInHandler_InvalidBody(t *testing.T) {
 }
 
 func TestSession_LogOutHandler_Success(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -287,7 +300,8 @@ func TestSession_LogOutHandler_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.LogOutHandler(w, r)
@@ -304,6 +318,7 @@ func TestSession_LogOutHandler_Success(t *testing.T) {
 }
 
 func TestSession_LogOutHandler_InvalidName(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -345,7 +360,8 @@ func TestSession_LogOutHandler_InvalidName(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.LogOutHandler(w, r)
@@ -362,6 +378,7 @@ func TestSession_LogOutHandler_InvalidName(t *testing.T) {
 }
 
 func TestSession_LogOutHandler_InvalidValue(t *testing.T) {
+	logger := logging.GetLogger()
 	pwd, err := os.Getwd()
 	folders := strings.Split(pwd, "/")
 	pwd = strings.Join(folders[:len(folders)-5], "/")
@@ -403,7 +420,8 @@ func TestSession_LogOutHandler_InvalidValue(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	sh := NewSessionHandler(su, uu)
+	router.Use(middleware.LoggerMiddleware)
+	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
 	sh.LogOutHandler(w, r)

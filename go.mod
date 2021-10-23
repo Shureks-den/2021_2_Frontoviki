@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
+	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/http-swagger v1.1.2
 	github.com/swaggo/swag v1.7.3
@@ -39,6 +40,7 @@ require (
 	github.com/jackc/pgtype v1.8.1 // indirect
 	github.com/jackc/puddle v1.1.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/swaggo/files v0.0.0-20190704085106-630677cd5c14 // indirect

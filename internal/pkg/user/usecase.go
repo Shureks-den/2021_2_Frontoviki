@@ -9,7 +9,9 @@ import (
 type UserUsecase interface {
 	Create(user *models.UserSignUp) (*models.UserData, error)
 	GetByEmail(email string) (*models.UserData, error)
+
 	CheckPassword(user *models.UserData, gettedPassword string) error
+	UpdatePassword(userId int64, changePassword *models.ChangePassword) error
 
 	GetById(id int64) (*models.Profile, error)
 	UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, error)

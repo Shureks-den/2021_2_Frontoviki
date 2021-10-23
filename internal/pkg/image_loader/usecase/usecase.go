@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"log"
 	"mime/multipart"
 	internalError "yula/internal/error"
 	imageloader "yula/internal/pkg/image_loader"
@@ -34,7 +33,6 @@ func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir stri
 
 	avatarId := uuid.NewString()
 	filename := avatarId + "." + extension
-	log.Println(filename)
 
 	err := ilu.imageLoaderRepo.Insert(headerFile, dir, filename)
 	if err != nil {
