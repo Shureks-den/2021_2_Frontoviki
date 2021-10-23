@@ -77,6 +77,11 @@ var (
 		Message: "unable to access this resource",
 	}
 
+	NotEnoughCopies error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "not enough copies",
+	}
+
 	// определяем ошибки уровня http
 	BadRequest error = ServerAnswer{
 		Code:    http.StatusBadRequest,
@@ -116,4 +121,11 @@ func ToMetaStatus(err error) (int, string) {
 		return answer.Code, answer.Message
 	}
 	return http.StatusInternalServerError, answer.Error()
+}
+
+func SetMaxCopies(amount int64) error {
+	return ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: fmt.Sprintf("not enough copies. max amount: %d", amount),
+	}
 }

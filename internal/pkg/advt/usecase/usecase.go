@@ -36,6 +36,9 @@ func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*mod
 
 func (au *AdvtUsecase) CreateAdvert(userId int64, advert *models.Advert) error {
 	advert.PublisherId = userId
+	if advert.Amount == 0 {
+		advert.Amount = 1
+	}
 	err := au.advtRepository.Insert(advert)
 	if err != nil {
 		return err

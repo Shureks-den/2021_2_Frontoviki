@@ -21,6 +21,7 @@ type Advert struct {
 	Category    string    `json:"category" valid:"type(string)" example:"clothes"`
 	Images      []string  `json:"images" valid:"-" swaggerignore:"true"`
 	Views       int64     `json:"views" valid:"-" swaggerignore:"true"`
+	Amount      int64     `json:"amount" valid:"int,optional" swaggerignore:"true"`
 }
 
 type AdvertShort struct {
