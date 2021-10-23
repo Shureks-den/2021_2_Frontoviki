@@ -62,7 +62,7 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		return internalError.DatabaseError
 	}
 
-	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price) 
+	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount) 
 				VALUES ($1, $2, (SELECT id FROM category WHERE name = $3), $4, $5, $6, $7, $8, $9) RETURNING id;`
 	query := ar.pool.QueryRow(context.Background(), queryStr,
 		advert.Name, advert.Description, advert.Category, advert.PublisherId,
