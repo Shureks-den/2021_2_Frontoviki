@@ -38,6 +38,7 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/profile/password", sm.CheckAuthorized(http.HandlerFunc(uh.ChangePasswordHandler))).Methods(http.MethodPost, http.MethodOptions)
 }
 
 // SignUpHandler godoc
@@ -253,4 +254,57 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
 	w.Write(models.ToBytes(http.StatusOK, "avatar uploaded successfully", body))
 	uh.logger.Debugf("user %d avatar uploaded successfully", userId)
+}
+
+// ChangePasswordHandler godoc
+// @Summary Change password
+// @Description Change password
+// @Tags user
+// @Accept application/json
+// @Produce application/json
+// @Param profile body models.ChangePassword true "Change password model"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /users/profile/password [post]
+func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	changePassword := models.ChangePassword{}
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&changePassword)
+	if err != nil {
+		uh.logger.Warnf("bad request: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(changePassword)
+	if err != nil {
+		uh.logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		return
+	}
+
+	err = uh.userUsecase.UpdatePassword(userId, &changePassword)
+	if err != nil {
+		uh.logger.Warnf("password not updated: %s", err.Error())
+
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "password changed", nil))
+	uh.logger.Debugf("user %d changed password successfully", userId)
 }

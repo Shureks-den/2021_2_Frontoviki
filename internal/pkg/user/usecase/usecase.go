@@ -150,3 +150,28 @@ func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) (*
 
 	return user, nil
 }
+
+func (uu *UserUsecase) UpdatePassword(userId int64, changePassword *models.ChangePassword) error {
+	user, err := uu.userRepo.SelectById(userId)
+	if err != nil {
+		return err
+	}
+
+	err = uu.CheckPassword(user, changePassword.Password)
+	if err != nil {
+		return err
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(changePassword.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(passwordHash)
+	err = uu.userRepo.Update(user)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

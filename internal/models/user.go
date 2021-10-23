@@ -43,3 +43,9 @@ func (user *UserData) ToProfile() *Profile {
 		Surname: user.Surname, Image: user.Image, Rating: user.Rating,
 	}
 }
+
+type ChangePassword struct {
+	Email       string `json:"email" valid:"email"`
+	Password    string `json:"password" valid:"type(string),minstringlength(4)"`
+	NewPassword string `json:"new_password" valid:"type(string),minstringlength(4)"`
+}
