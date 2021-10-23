@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/cart"
@@ -24,7 +25,7 @@ func (cu *CartUsecase) AddToCart(userId int64, singleCart *models.CartHandler) e
 	return nil
 }
 
-func (cu *CartUsecase) UpdateCart(userId int64, singleCart *models.CartHandler, maxAmount int64) error {
+func (cu *CartUsecase) UpdateCart(userId int64, singleCart *models.CartHandler, maxAmount int64) (*models.Cart, error) {
 	_, err := cu.cartRepository.Select(userId, singleCart.AdvertId)
 	newOneInCart := models.NewCart(userId, singleCart)
 
@@ -32,28 +33,28 @@ func (cu *CartUsecase) UpdateCart(userId int64, singleCart *models.CartHandler, 
 	case nil:
 		if newOneInCart.Amount == 0 {
 			err = cu.cartRepository.Delete(newOneInCart)
-			return err
+			return nil, err
 		} else if newOneInCart.Amount > maxAmount {
 			var genErr error = internalError.SetMaxCopies(maxAmount)
-			return genErr
+			return newOneInCart, genErr
 		}
 
 		err = cu.cartRepository.Update(newOneInCart)
-		return err
+		return newOneInCart, err
 
 	case internalError.EmptyQuery:
 		if newOneInCart.Amount == 0 {
-			return nil
+			return nil, nil
 		} else if newOneInCart.Amount > maxAmount {
 			var genErr error = internalError.SetMaxCopies(maxAmount)
-			return genErr
+			return newOneInCart, genErr
 		}
 
 		err = cu.cartRepository.Insert(newOneInCart)
-		return err
+		return newOneInCart, err
 
 	default:
-		return err
+		return nil, err
 
 	}
 }
@@ -62,8 +63,33 @@ func (cu *CartUsecase) RemoveFromCart(userId int64, advertId int64) error {
 	return nil
 }
 
-func (cu *CartUsecase) UpdateAllCart(userId int64) error {
-	return nil
+func (cu *CartUsecase) UpdateAllCart(userId int64, cart []*models.CartHandler,
+	adverts []*models.Advert) ([]*models.Cart, []*models.Advert, []string, error) {
+	if len(cart) != len(adverts) {
+		return nil, nil, nil, internalError.BadRequest
+	}
+
+	newCart := make([]*models.Cart, 0)
+	newAdvert := make([]*models.Advert, 0)
+	messages := make([]string, 0)
+	for i := range cart {
+		el, err := cu.UpdateCart(userId, cart[i], adverts[i].Amount)
+		if !(err == nil || strings.Contains(err.Error(), "not enough copies.")) {
+			return nil, nil, nil, err
+		}
+
+		if el != nil {
+			newCart = append(newCart, el)
+			newAdvert = append(newAdvert, adverts[i])
+			if err == nil {
+				messages = append(messages, "ok")
+			} else if strings.Contains(err.Error(), "not enough copies.") {
+				_, msg := internalError.ToMetaStatus(err)
+				messages = append(messages, msg)
+			}
+		}
+	}
+	return newCart, newAdvert, messages, nil
 }
 
 func (cu *CartUsecase) ClearAllCart(userId int64) error {
