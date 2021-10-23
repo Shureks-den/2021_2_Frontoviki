@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS advert (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
 	views int NOT NULL DEFAULT 0,
 	amount int NOT NULL DEFAULT 1,
+	is_new BOOLEAN NOT NULL DEFAULT TRUE,
 	
     publisher_id INT NOT NULL,
 	category_id INT NOT NULL,

@@ -62,11 +62,11 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		return internalError.DatabaseError
 	}
 
-	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount) 
-				VALUES ($1, $2, (SELECT id FROM category WHERE name = $3), $4, $5, $6, $7, $8, $9) RETURNING id;`
+	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount, is_new) 
+				VALUES ($1, $2, (SELECT id FROM category WHERE name = $3), $4, $5, $6, $7, $8, $9, $10) RETURNING id;`
 	query := ar.pool.QueryRow(context.Background(), queryStr,
 		advert.Name, advert.Description, advert.Category, advert.PublisherId,
-		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount)
+		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount, advert.IsNew)
 
 	if err := query.Scan(&advert.Id); err != nil {
 		rollbackErr := tx.Rollback(context.Background())
@@ -87,7 +87,7 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 	queryStr := `
 				SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount FROM advert a
+				a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 				JOIN category c ON a.category_id = c.Id
 				LEFT JOIN advert_image ai ON a.id = ai.advert_id
 				GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
@@ -100,7 +100,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 
 	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount)
+		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -124,10 +124,11 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 	}
 
 	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE c.name = $4), 
-				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9, date_close = $10, amount = $11 WHERE id = $1 RETURNING id;`
+				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9, date_close = $10, 
+				amount = $11, is_new = $12 WHERE id = $1 RETURNING id;`
 	query := tx.QueryRow(context.Background(), queryStr, newAdvert.Id, newAdvert.Name, newAdvert.Description,
 		newAdvert.Category, newAdvert.Location, newAdvert.Latitude, newAdvert.Longitude,
-		newAdvert.Price, newAdvert.IsActive, newAdvert.DateClose, newAdvert.Amount)
+		newAdvert.Price, newAdvert.IsActive, newAdvert.DateClose, newAdvert.Amount, newAdvert.IsNew)
 
 	err = query.Scan(&newAdvert.Id)
 	if err != nil {
@@ -209,7 +210,7 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 const (
 	defaultAdvertsQueryByPublisherId string = `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount FROM advert a
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 		JOIN category c ON a.category_id = c.Id
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
@@ -238,7 +239,7 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, offset i
 
 		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount)
+			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
 			return nil, internalError.DatabaseError
