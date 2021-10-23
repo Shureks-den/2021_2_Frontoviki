@@ -104,8 +104,14 @@ func (uu *UserUsecase) UpdateProfile(userId int64, userNew *models.UserData) (*m
 	if userNew.Email != "" && userNew.Email != userActual.Email {
 		// проверка на уникальность новой почты
 		_, serverErr := uu.GetByEmail(userNew.Email)
-		if serverErr != internalError.NotExist {
+
+		switch serverErr {
+		case nil:
+			return nil, internalError.AlreadyExist
+
+		case internalError.InternalError:
 			return nil, serverErr
+
 		}
 	}
 
