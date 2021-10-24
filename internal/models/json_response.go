@@ -77,3 +77,8 @@ type HttpBodyCart struct {
 	Cart    []*Cart   `json:"cart"`
 	Adverts []*Advert `json:"adverts"`
 }
+
+type HttpBodyOrder struct {
+	Salesman Profile `json:"salesman"`
+	Order    Cart    `json:"order"`
+}

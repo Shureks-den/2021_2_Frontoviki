@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
@@ -40,6 +41,8 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
+	// s.HandleFunc("/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
+	s.HandleFunc("/{id:[0-9]+}/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
 // UpdateOneAdvertHandler godoc
@@ -237,4 +240,81 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "cart cleared", nil))
+}
+
+// CheckoutHandler godoc
+// @Summary Checkout
+// @Description Checkout
+// @Tags cart
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyOrder}
+// @failure default {object} models.HttpError
+// @Router /cart/{id}/checkout [post]
+func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		ch.logger.Warnf("can not parse id adv: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	order, err := ch.cartUsecase.GetOrderFromCart(userId, advertId)
+	if err != nil {
+		ch.logger.Warnf("error with getting order: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	advert, err := ch.advertUsecase.GetAdvert(advertId)
+	if err != nil {
+		ch.logger.Warnf("error with getting advert: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	salesman, err := ch.userUsecase.GetById(advert.PublisherId)
+	if err != nil {
+		ch.logger.Warnf("error with getting salesman: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ch.cartUsecase.MakeOrder(order, advert, salesman)
+	if err != nil {
+		ch.logger.Warnf("can not make order: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ch.advertUsecase.UpdateAdvert(advertId, advert)
+	if err != nil {
+		ch.logger.Warnf("can not update advert: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyOrder{Salesman: *salesman, Order: *order}
+	w.Write(models.ToBytes(http.StatusOK, "order made successfully", body))
 }
