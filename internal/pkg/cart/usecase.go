@@ -3,6 +3,7 @@ package cart
 import "yula/internal/models"
 
 type CartUsecase interface {
+	GetOrderFromCart(userId int64, advertId int64) (*models.Cart, error)
 	GetCart(userId int64) ([]*models.Cart, error)
 	AddToCart(userId int64, singleCart *models.CartHandler) error
 	UpdateCart(userId int64, singleCart *models.CartHandler, maxAmount int64) (*models.Cart, error)
@@ -11,4 +12,6 @@ type CartUsecase interface {
 	UpdateAllCart(userId int64, cart []*models.CartHandler,
 		adverts []*models.Advert) ([]*models.Cart, []*models.Advert, []string, error)
 	ClearAllCart(userId int64) error
+
+	MakeOrder(order *models.Cart, advert *models.Advert, salesman *models.Profile) error
 }

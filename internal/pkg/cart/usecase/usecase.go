@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"strings"
+	"time"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/cart"
@@ -15,6 +16,14 @@ func NewCartUsecase(cartRepository cart.CartRepository) cart.CartUsecase {
 	return &CartUsecase{
 		cartRepository: cartRepository,
 	}
+}
+
+func (cu *CartUsecase) GetOrderFromCart(userId int64, advertId int64) (*models.Cart, error) {
+	order, err := cu.cartRepository.Select(userId, advertId)
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
 }
 
 func (cu *CartUsecase) GetCart(userId int64) ([]*models.Cart, error) {
@@ -102,5 +111,24 @@ func (cu *CartUsecase) ClearAllCart(userId int64) error {
 	if !(err == nil || err == internalError.EmptyQuery) {
 		return err
 	}
+	return nil
+}
+
+func (cu *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert, salesman *models.Profile) error {
+	if order.Amount == 0 || order.Amount > advert.Amount {
+		return internalError.InvalidQuery
+	}
+
+	advert.Amount -= order.Amount
+	if advert.Amount == 0 {
+		advert.IsActive = false
+		advert.DateClose = time.Now()
+	}
+
+	err := cu.cartRepository.Delete(order)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
