@@ -144,7 +144,7 @@ func (cr *CartRepository) DeleteAll(userId int64) error {
 	queryStr := "DELETE FROM cart WHERE user_id = $1;"
 	ct, err := tx.Exec(context.Background(), queryStr, userId)
 
-	if ct.RowsAffected() == 0 || err != nil {
+	if err != nil {
 		rollbackErr := tx.Rollback(context.Background())
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -155,6 +155,10 @@ func (cr *CartRepository) DeleteAll(userId int64) error {
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return internalError.NotCommited
+	}
+
+	if ct.RowsAffected() == 0 {
+		return internalError.EmptyQuery
 	}
 
 	return nil

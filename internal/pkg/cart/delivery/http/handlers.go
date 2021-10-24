@@ -39,6 +39,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
 // UpdateOneAdvertHandler godoc
@@ -207,4 +208,33 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyCart{Cart: cart, Adverts: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+}
+
+// GetCartHandler godoc
+// @Summary Get user's cart
+// @Description Get user's cart
+// @Tags cart
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /cart/clear [post]
+func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) {
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	err := ch.cartUsecase.ClearAllCart(userId)
+	if err != nil {
+		ch.logger.Warnf("unable to clear the cart: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "cart cleared", nil))
 }

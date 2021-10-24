@@ -98,5 +98,9 @@ func (cu *CartUsecase) UpdateAllCart(userId int64, cart []*models.CartHandler,
 }
 
 func (cu *CartUsecase) ClearAllCart(userId int64) error {
+	err := cu.cartRepository.DeleteAll(userId)
+	if !(err == nil || err == internalError.EmptyQuery) {
+		return err
+	}
 	return nil
 }
