@@ -7,5 +7,7 @@ type CartRepository interface {
 	Update(cart *models.Cart) error
 	Insert(cart *models.Cart) error
 	Delete(cart *models.Cart) error
+
+	SelectAll(userId int64) ([]*models.Cart, error)
 	DeleteAll(userId int64) error
 }

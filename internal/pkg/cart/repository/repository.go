@@ -37,6 +37,29 @@ func (cr *CartRepository) Select(userId int64, advertId int64) (*models.Cart, er
 	return &oneInCart, nil
 }
 
+func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
+	queryStr := "SELECT user_id, advert_id, amount FROM cart WHERE user_id = $1;"
+	query, err := cr.pool.Query(context.Background(), queryStr, userId)
+	if err != nil {
+		return nil, internalError.InternalError
+	}
+
+	defer query.Close()
+	cart := make([]*models.Cart, 0)
+	for query.Next() {
+		var oneInCart models.Cart
+
+		err = query.Scan(&oneInCart.UserId, &oneInCart.AdvertId, &oneInCart.Amount)
+		if err != nil {
+			return nil, internalError.InternalError
+		}
+
+		cart = append(cart, &oneInCart)
+	}
+
+	return cart, nil
+}
+
 func (cr *CartRepository) Update(cart *models.Cart) error {
 	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
@@ -121,7 +144,7 @@ func (cr *CartRepository) DeleteAll(userId int64) error {
 	queryStr := "DELETE FROM cart WHERE user_id = $1;"
 	ct, err := tx.Exec(context.Background(), queryStr, userId)
 
-	if ct.RowsAffected() == 0 || err != nil {
+	if err != nil {
 		rollbackErr := tx.Rollback(context.Background())
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -132,6 +155,10 @@ func (cr *CartRepository) DeleteAll(userId int64) error {
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return internalError.NotCommited
+	}
+
+	if ct.RowsAffected() == 0 {
+		return internalError.EmptyQuery
 	}
 
 	return nil

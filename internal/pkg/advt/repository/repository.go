@@ -26,8 +26,12 @@ func NewAdvtRepository(pool *pgxpool.Pool) advt.AdvtRepository {
 }
 
 func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.Advert, error) {
-	queryStr := `SELECT a.id, a.name, a.description, a.price, a.location, a.published_at, a.publisher_id, a.is_active FROM advert a
-				 %s LIMIT $1 OFFSET $2;`
+	queryStr := `SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
+				 a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+				 JOIN category c ON a.category_id = c.Id
+				 LEFT JOIN advert_image ai ON a.id = ai.advert_id
+				 GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+				 a.date_close, a.is_active, a.views, a.publisher_id, c.name %s LIMIT $1 OFFSET $2;`
 	if isSortedByPublichedDate {
 		queryStr = fmt.Sprintf(queryStr, " ORDER BY a.published_at DESC")
 	} else {
@@ -40,20 +44,29 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 	}
 	defer rows.Close()
 
-	var advts []*models.Advert
+	var adverts []*models.Advert
+	var advertPathImages []*string
 	for rows.Next() {
-		advt := &models.Advert{}
+		advert := &models.Advert{}
 
-		err := rows.Scan(&advt.Id, &advt.Name, &advt.Description, &advt.Price, &advt.Location,
-			&advt.PublishedAt, &advt.PublisherId, &advt.IsActive)
+		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 		if err != nil {
 			return nil, internalError.DatabaseError
 		}
 
-		advts = append(advts, advt)
+		advert.Images = []string{}
+		for _, path := range advertPathImages {
+			if path != nil {
+				advert.Images = append(advert.Images, *path)
+			}
+		}
+
+		adverts = append(adverts, advert)
 	}
 
-	return advts, nil
+	return adverts, nil
 }
 
 func (ar *AdvtRepository) Insert(advert *models.Advert) error {
