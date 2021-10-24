@@ -30,6 +30,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 				 a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 				 JOIN category c ON a.category_id = c.Id
 				 LEFT JOIN advert_image ai ON a.id = ai.advert_id
+				 WHERE a.is_active 
 				 GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				 a.date_close, a.is_active, a.views, a.publisher_id, c.name %s LIMIT $1 OFFSET $2;`
 	if isSortedByPublichedDate {
@@ -102,7 +103,8 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 				SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 				JOIN category c ON a.category_id = c.Id
-				LEFT JOIN advert_image ai ON a.id = ai.advert_id
+				LEFT JOIN advert_image ai ON a.id = ai.advert_id 
+				WHERE a.is_active 
 				GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name
 				HAVING a.id = $1;`
@@ -224,7 +226,8 @@ const (
 	defaultAdvertsQueryByPublisherId string = `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
-		JOIN category c ON a.category_id = c.Id
+		JOIN category c ON a.category_id = c.Id 
+		WHERE a.is_active 
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name
