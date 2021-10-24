@@ -227,7 +227,6 @@ const (
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 		JOIN category c ON a.category_id = c.Id 
-		WHERE a.is_active 
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name
@@ -236,11 +235,17 @@ const (
 	`
 )
 
-func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, offset int64, limit int64) ([]*models.Advert, error) {
-	queryStr := fmt.Sprintf(defaultAdvertsQueryByPublisherId,
-		"AND a.is_active = true",
-		"ORDER BY a.is_active DESC, a.published_at DESC",
-	)
+func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_active bool, offset int64, limit int64) ([]*models.Advert, error) {
+	var queryStr string
+	if is_active {
+		queryStr = fmt.Sprintf(defaultAdvertsQueryByPublisherId, "AND a.is_active = true",
+			"ORDER BY a.is_active DESC, a.published_at DESC",
+		)
+	} else {
+		queryStr = fmt.Sprintf(defaultAdvertsQueryByPublisherId, "AND a.is_active = false",
+			"ORDER BY a.is_active DESC, a.published_at DESC",
+		)
+	}
 
 	rows, err := ar.pool.Query(context.Background(), queryStr, publisherId, limit, offset*limit)
 	if err != nil {

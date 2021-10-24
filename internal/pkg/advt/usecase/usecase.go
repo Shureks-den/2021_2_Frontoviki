@@ -139,8 +139,8 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 	return advert, nil
 }
 
-func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, page *models.Page) ([]*models.Advert, error) {
-	adverts, err := au.advtRepository.SelectAdvertsByPublisherId(publisherId, page.PageNum, page.Count)
+func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error) {
+	adverts, err := au.advtRepository.SelectAdvertsByPublisherId(publisherId, is_active, page.PageNum, page.Count)
 	if err != nil {
 		return nil, err
 	}

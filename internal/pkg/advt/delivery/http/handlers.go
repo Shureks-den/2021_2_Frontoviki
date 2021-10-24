@@ -35,12 +35,12 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s := r.PathPrefix("/adverts").Subrouter()
 
 	s.HandleFunc("", ah.AdvertListHandler).Methods(http.MethodGet, http.MethodOptions)
-
 	s.Handle("", sm.CheckAuthorized(http.HandlerFunc(ah.CreateAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/archive", sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))).Methods(http.MethodGet, http.MethodOptions)
+
 	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
-
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 
@@ -443,9 +443,11 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /adverts/salesman/{id} [get]
 func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	vars := mux.Vars(r)
 	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
+		ah.logger.Warnf("can not parse string: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -454,6 +456,7 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 
 	u, err := url.Parse(r.URL.RequestURI())
 	if err != nil {
+		ah.logger.Warnf("can not parse path: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -463,6 +466,7 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 	query := u.Query()
 	page, err := models.NewPage(query.Get("page"), query.Get("count"))
 	if err != nil {
+		ah.logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -471,14 +475,16 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 
 	salesman, err := ah.userUsecase.GetById(salesmanId)
 	if err != nil {
+		ah.logger.Warnf("can not parse path: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
-	adverts, err := ah.advtUsecase.GetAdvertListByPublicherId(salesmanId, page)
+	adverts, err := ah.advtUsecase.GetAdvertListByPublicherId(salesmanId, true, page)
 	if err != nil {
+		ah.logger.Warnf("can not get adverts: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -490,4 +496,53 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts}
 	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
+}
+
+// SalesmanPageHandler godoc
+// @Summary Get salesman page and his adverts
+// @Description Get salesman page and his adverts
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdverts}
+// @failure default {object} models.HttpError
+// @Router /adverts/archive [get]
+func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	u, err := url.Parse(r.URL.RequestURI())
+	if err != nil {
+		ah.logger.Warnf("can not parse path: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	query := u.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		ah.logger.Warnf("can not create page: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetAdvertListByPublicherId(userId, false, page)
+	if err != nil {
+		ah.logger.Warnf("unable to got adverts: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: adverts}
+	w.Write(models.ToBytes(http.StatusOK, "archive got", body))
 }
