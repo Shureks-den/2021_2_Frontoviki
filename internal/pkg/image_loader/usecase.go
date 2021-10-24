@@ -5,7 +5,7 @@ import "mime/multipart"
 const (
 	AvatarsDirectory     string = "static/avatars"
 	DefaultAvatar        string = AvatarsDirectory + "/default_avatar.png"
-	AdvertImageDirectory string = "static/advert_images"
+	AdvertImageDirectory string = "static/advertimages"
 	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image.png"
 )
 
