@@ -17,8 +17,13 @@ func NewCartUsecase(cartRepository cart.CartRepository) cart.CartUsecase {
 	}
 }
 
-func (cu *CartUsecase) GetCart(userId int64) (*models.CartList, error) {
-	return nil, nil
+func (cu *CartUsecase) GetCart(userId int64) ([]*models.Cart, error) {
+	cart, err := cu.cartRepository.SelectAll(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return cart, nil
 }
 
 func (cu *CartUsecase) AddToCart(userId int64, singleCart *models.CartHandler) error {

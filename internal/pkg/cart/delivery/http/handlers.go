@@ -38,6 +38,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
+	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
 }
 
 // UpdateOneAdvertHandler godoc
@@ -161,5 +162,49 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyCartAll{Cart: cart, Adverts: advs, Hints: messages}
+	w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+}
+
+// GetCartHandler godoc
+// @Summary Get user's cart
+// @Description Get user's cart
+// @Tags cart
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyCart}
+// @failure default {object} models.HttpError
+// @Router /cart [get]
+func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	cart, err := ch.cartUsecase.GetCart(userId)
+	if err != nil {
+		ch.logger.Warnf("unable to get the cart: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts := make([]*models.Advert, 0)
+	for _, e := range cart {
+		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId)
+		if err != nil {
+			ch.logger.Warnf("unable to get the advert: %s", err.Error())
+			w.WriteHeader(http.StatusOK)
+			metaCode, metaMessage := internalError.ToMetaStatus(err)
+			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			return
+		}
+
+		adverts = append(adverts, advert)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyCart{Cart: cart, Adverts: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
 }
