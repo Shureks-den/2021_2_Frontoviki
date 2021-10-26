@@ -63,10 +63,23 @@ func (au *AdvtUsecase) GetAdvert(advertId int64) (*models.Advert, error) {
 
 func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) error {
 	newAdvert.Id = advertId
-	err := au.advtRepository.Update(newAdvert)
+	oldAdvert, err := au.advtRepository.SelectById(advertId)
 	if err != nil {
 		return err
 	}
+
+	newAdvert.PublishedAt = oldAdvert.PublishedAt
+	newAdvert.DateClose = oldAdvert.DateClose
+	newAdvert.IsActive = oldAdvert.IsActive
+
+	err = au.advtRepository.Update(newAdvert)
+	if err != nil {
+		return err
+	}
+
+	newAdvert.Images = oldAdvert.Images
+	newAdvert.Views = oldAdvert.Views
+
 	return nil
 }
 
