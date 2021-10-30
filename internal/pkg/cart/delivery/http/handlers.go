@@ -305,14 +305,15 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ch.advertUsecase.UpdateAdvert(advertId, advert)
-	if err != nil {
-		ch.logger.Warnf("can not update advert: %s", err.Error())
-		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
-		return
-	}
+	/*
+		err = ch.advertUsecase.CloseAdvert(advertId, advert.PublisherId)
+		if err != nil {
+			ch.logger.Warnf("can not update advert: %s", err.Error())
+			w.WriteHeader(http.StatusOK)
+			metaCode, metaMessage := internalError.ToMetaStatus(err)
+			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			return
+		}*/
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyOrder{Salesman: *salesman, Order: *order}
