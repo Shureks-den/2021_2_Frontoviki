@@ -26,6 +26,10 @@ import (
 	cartRep "yula/internal/pkg/cart/repository"
 	cartUse "yula/internal/pkg/cart/usecase"
 
+	categoryHttp "yula/internal/pkg/category/delivery/http"
+	categoryRep "yula/internal/pkg/category/repository"
+	categoryUse "yula/internal/pkg/category/usecase"
+
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -83,17 +87,20 @@ func main() {
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	cr := cartRep.NewCartRepository(postgres.GetDbPool())
+	catr := categoryRep.NewCategoryRepository(postgres.GetDbPool())
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)
 	uu := userUse.NewUserUsecase(ur, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 	cu := cartUse.NewCartUsecase(cr)
+	catu := categoryUse.NewCategoryUsecase(catr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu, logger)
 	uh := userHttp.NewUserHandler(uu, su, logger)
 	sh := sessHttp.NewSessionHandler(su, uu, logger)
 	ch := cartHttp.NewCartHandler(cu, uu, au, logger)
+	cath := categoryHttp.NewCategoryHandler(catu, logger)
 
 	sm := middleware.NewSessionMiddleware(su)
 
@@ -101,6 +108,7 @@ func main() {
 	uh.Routing(api, sm)
 	sh.Routing(api)
 	ch.Routing(api, sm)
+	cath.Routing(api)
 
 	//http
 	fmt.Println("start serving ::8080")
