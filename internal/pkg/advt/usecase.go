@@ -8,6 +8,7 @@ import (
 type AdvtUsecase interface {
 	GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error)
 	GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error)
+	GetAdvertListByCategory(categoryName string, page *models.Page) ([]*models.Advert, error)
 
 	AdvertsToShort(adverts []*models.Advert) []*models.AdvertShort
 

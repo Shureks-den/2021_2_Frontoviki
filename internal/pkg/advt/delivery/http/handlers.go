@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -37,6 +38,7 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.HandleFunc("", ah.AdvertListHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("", sm.CheckAuthorized(http.HandlerFunc(ah.CreateAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/archive", sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/{category}", ah.AdvertListByCategoryHandler).Methods(http.MethodGet, http.MethodOptions)
 
 	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
@@ -545,4 +547,44 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "archive got", body))
+}
+
+// AdvertListByCategoryHandler godoc
+// @Summary Get adverts by category
+// @Description Get adverts by category
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Salesman id"
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdverts}
+// @failure default {object} models.HttpError
+// @Router /adverts/{category} [get]
+func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+
+	categoryName := path.Base(r.URL.Path)
+	query := r.URL.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		ah.logger.Warnf("can not create page: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetAdvertListByCategory(categoryName, page)
+	if err != nil {
+		ah.logger.Warnf("can not get adverts: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: adverts}
+	w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
 }
