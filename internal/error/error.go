@@ -93,6 +93,11 @@ var (
 		Message: "unauthorized",
 	}
 
+	CSRFErrorToken error = ServerAnswer{
+		Code:    http.StatusConflict,
+		Message: "bad csrf token",
+	}
+
 	// ошибки обработки картинок
 	EmptyImageForm error = ServerAnswer{
 		Code:    http.StatusBadRequest,

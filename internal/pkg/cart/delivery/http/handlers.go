@@ -56,7 +56,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 // @failure default {object} models.HttpError
 // @Router /cart/one [post]
 func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -114,7 +114,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 // @failure default {object} models.HttpError
 // @Router /cart [post]
 func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -179,7 +179,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /cart [get]
 func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -223,7 +223,7 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 // @failure default {object} models.HttpError
 // @Router /cart/clear [post]
 func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -253,7 +253,7 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 // @failure default {object} models.HttpError
 // @Router /cart/{id}/checkout [post]
 func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
