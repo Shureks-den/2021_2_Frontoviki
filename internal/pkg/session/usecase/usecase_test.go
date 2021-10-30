@@ -1,123 +1,87 @@
 package usecase
 
 import (
-	"fmt"
-	"os"
-	"strings"
 	"testing"
-	"yula/internal/config"
-	sessRep "yula/internal/pkg/session/repository"
+	"time"
+	"yula/internal/models"
 
-	"github.com/joho/godotenv"
+	myerr "yula/internal/error"
+	"yula/internal/pkg/session/mocks"
+
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestSession_SignInHandler_CreateSuccess(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	sess := models.Session{Value: uuid.NewString(), UserId: 10529, ExpiresAt: time.Now().Add(time.Minute)}
+	sr.On("Set", mock.MatchedBy(func(session *models.Session) bool {
+		return session.UserId == sess.UserId
+	})).Return(nil)
 
-	cnfg := config.NewConfig()
+	session, err := su.Create(sess.UserId)
+	assert.Nil(t, err)
+	assert.Equal(t, session.UserId, int64(10529))
+}
 
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := NewSessionUsecase(sr)
+func TestSession_SignInHandler_CreateNotSuccess(t *testing.T) {
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	session, err := su.Create(0)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, session.UserId, int64(0))
+	sess := models.Session{Value: uuid.NewString(), UserId: -1, ExpiresAt: time.Now().Add(time.Minute)}
+	sr.On("Set", mock.MatchedBy(func(session *models.Session) bool {
+		return session.UserId == sess.UserId
+	})).Return(myerr.DatabaseError)
+
+	session, err := su.Create(sess.UserId)
+	assert.Equal(t, err, myerr.DatabaseError)
+	assert.Nil(t, session)
 }
 
 func TestSession_SignInHandler_DeleteSuccess(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	sess := models.Session{Value: uuid.NewString(), UserId: 1, ExpiresAt: time.Now().Add(time.Minute)}
+	sr.On("GetByValue", sess.Value).Return(&sess, nil)
+	sr.On("Delete", &sess).Return(nil)
 
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := NewSessionUsecase(sr)
-
-	session, err := su.Create(0)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, session.UserId, int64(0))
-
-	err = su.Delete(session.Value)
-	assert.Equal(t, nil, err)
+	err := su.Delete(sess.Value)
+	assert.Equal(t, err, nil)
 }
 
 func TestSession_SignInHandler_DeleteError(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	sr.On("GetByValue", "empty").Return(nil, myerr.DatabaseError)
 
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := NewSessionUsecase(sr)
-
-	err = su.Delete("session_value")
-	assert.Equal(t, "empty_row", err.Error())
+	err := su.Delete("empty")
+	assert.Equal(t, err, myerr.DatabaseError)
 }
 
 func TestSession_SignInHandler_CheckSuccess(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	sess := models.Session{Value: uuid.NewString(), UserId: 1, ExpiresAt: time.Now().Add(time.Minute)}
+	sr.On("GetByValue", sess.Value).Return(&sess, nil)
 
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := NewSessionUsecase(sr)
-
-	session, err := su.Create(0)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, session.UserId, int64(0))
-
-	sessionNew, err := su.Check(session.Value)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, session.UserId, int64(0))
-	assert.Equal(t, session.Value, sessionNew.Value)
-
-	err = su.Delete(session.Value)
-	assert.Equal(t, nil, err)
+	session, err := su.Check(sess.Value)
+	assert.Equal(t, *session, sess)
+	assert.Nil(t, err)
 }
 
 func TestSession_SignInHandler_CheckError(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	sr := mocks.SessionRepository{}
+	su := NewSessionUsecase(&sr)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	sr.On("GetByValue", "").Return(nil, myerr.DatabaseError)
 
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := NewSessionUsecase(sr)
-
-	sessionNew, err := su.Check("session_value")
-	assert.Equal(t, true, sessionNew == nil)
-	assert.Equal(t, "empty_row", err.Error())
+	session, err := su.Check("")
+	assert.Equal(t, err, myerr.DatabaseError)
+	assert.Nil(t, session)
 }

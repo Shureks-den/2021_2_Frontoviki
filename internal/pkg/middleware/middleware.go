@@ -112,7 +112,6 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 
 func LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		x_request_id := fmt.Sprint("", rand.Int())
 		ctx := context.WithValue(r.Context(), "logger fields",
 			logrus.Fields{
