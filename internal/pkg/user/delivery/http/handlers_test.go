@@ -4,64 +4,33 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"strings"
 	"testing"
 	"time"
-	"yula/internal/config"
-	"yula/internal/database"
 	"yula/internal/models"
 
-	"yula/internal/pkg/logging"
+	myerr "yula/internal/error"
 	"yula/internal/pkg/middleware"
-	userRep "yula/internal/pkg/user/repository"
-	userUse "yula/internal/pkg/user/usecase"
+	userMock "yula/internal/pkg/user/mocks"
 
-	sessRep "yula/internal/pkg/session/repository"
-	sessUse "yula/internal/pkg/session/usecase"
+	sessMock "yula/internal/pkg/session/mocks"
 
-	imageloaderRepo "yula/internal/pkg/image_loader/repository"
-	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+	imageloader "yula/internal/pkg/image_loader"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSignUpHandlerValid(t *testing.T) {
-	// loads values from .env into the system
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
 
 	r := mux.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
-	sm := middleware.NewSessionMiddleware(su)
+	sm := middleware.NewSessionMiddleware(&su)
 	uh.Routing(r, sm)
 
 	srv := httptest.NewServer(r)
@@ -69,139 +38,81 @@ func TestSignUpHandlerValid(t *testing.T) {
 
 	reqUser := models.UserSignUp{
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
 	reqBodyBuffer := new(bytes.Buffer)
-	err = json.NewEncoder(reqBodyBuffer).Encode(reqUser)
-	if err != nil {
-		t.Fatalf("Bad json encode")
+	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
+	assert.Nil(t, err)
+
+	userCreated := models.UserData{
+		Id:        258,
+		Email:     reqUser.Email,
+		Password:  "aboba",
+		CreatedAt: time.Now(),
+		Image:     imageloader.DefaultAdvertImage,
+		Rating:    0,
 	}
+	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
+
+	sessionCreated := models.Session{
+		Value:     uuid.NewString(),
+		UserId:    userCreated.Id,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	su.On("Create", userCreated.Id).Return(&sessionCreated, nil).Once()
 
 	reader := bytes.NewReader(reqBodyBuffer.Bytes())
-	_, err = http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
-	if err != nil {
-		t.Fatalf("Could not post request on signup")
-	}
+	res, err := http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
+	assert.Nil(t, err)
 
 	// buf := new(bytes.Buffer)
 	// buf.ReadFrom(res.Body)
 	// newStr := buf.String()
 
-	// respUser := models.HttpUser{}
-	// err = json.NewDecoder(res.Body).Decode(&respUser)
-	// if err != nil {
-	// 	t.Fatalf("Could not serialize user from response")
-	// }
+	// t.Fatal(res.Body)
 
-	// assert.Equal(t, respUser.Body.User.Email, reqUser.Email)
+	profile := models.Profile{}
+	resp := models.HttpBodyInterface{
+		Body: profile,
+	}
+	err = json.NewDecoder(res.Body).Decode(&resp)
+	assert.Nil(t, err)
+
+	assert.Equal(t, (((resp.Body.(map[string]interface{}))["profile"]).(map[string]interface{}))["email"], userCreated.ToProfile().Email)
 }
 
 func TestSignUpHandlerUserNotValid(t *testing.T) {
-	logger := logging.GetLogger()
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
 
 	r := mux.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
-	sm := middleware.NewSessionMiddleware(su)
+	sm := middleware.NewSessionMiddleware(&su)
 	uh.Routing(r, sm)
 
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
 	res, err := http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(nil), nil)
-	if err != nil {
-		t.Fatalf("Could not post request on signup")
-	}
+	assert.Nil(t, err)
 
-	resError := models.HttpError{}
-	err = json.NewDecoder(res.Body).Decode(&resError)
-	if err != nil {
-		t.Fatalf("Could not serialize error from response")
-	}
-	assert.Equal(t, resError.Code, 400)
-}
+	decodedRes := models.HttpError{}
+	err = json.NewDecoder(res.Body).Decode(&decodedRes)
+	assert.Nil(t, err)
 
-func TestSignUpHandlerDBConnectionNotOpened(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.Config{
-		DbConfig: config.DatabaseConfig{DatabaseUrl: ""},
-		TarantoolCfg: config.TarantoolConfig{
-			TarantoolServerAddress: config.GetEnv("TARANTOOL_ADDRESS", "localhost:3302"),
-			TarantoolOpts: config.TarantoolOptions{
-				User: config.GetEnv("TARANTOOL_USER", "admin"),
-				Pass: config.GetEnv("TARANTOOL_PASS", "pass"),
-			},
-		},
-	}
-	_, err = database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	assert.NotNil(t, err)
+	assert.Equal(t, decodedRes.Code, http.StatusBadRequest)
 }
 
 func TestSignUpHandlerSameEmail(t *testing.T) {
-	logger := logging.GetLogger()
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := userUse.NewUserUsecase(ur, ilu)
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uh := NewUserHandler(uu, su, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
 
 	r := mux.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
-	sm := middleware.NewSessionMiddleware(su)
+	sm := middleware.NewSessionMiddleware(&su)
 	uh.Routing(r, sm)
 
 	srv := httptest.NewServer(r)
@@ -209,130 +120,54 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 
 	reqUser := models.UserSignUp{
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	reqBodyBuffer := new(bytes.Buffer)
-	err = json.NewEncoder(reqBodyBuffer).Encode(reqUser)
-	if err != nil {
-		t.Fatalf("Bad json encode")
+	userCreated := models.UserData{
+		Id:        258,
+		Email:     reqUser.Email,
+		Password:  "aboba",
+		CreatedAt: time.Now(),
+		Image:     imageloader.DefaultAdvertImage,
+		Rating:    0,
 	}
+	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
+	uu.On("Create", &reqUser).Return(nil, myerr.AlreadyExist)
+
+	sessionCreated := models.Session{
+		Value:     uuid.NewString(),
+		UserId:    userCreated.Id,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	su.On("Create", userCreated.Id).Return(&sessionCreated, nil).Once()
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
+	assert.Nil(t, err)
 
 	reader := bytes.NewReader(reqBodyBuffer.Bytes())
 	_, err = http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
-	if err != nil {
-		t.Fatalf("Could not post request on signup")
-	}
+	assert.Nil(t, err)
 
-	json.NewEncoder(reqBodyBuffer).Encode(reqUser)
-	reader = bytes.NewReader(reqBodyBuffer.Bytes())
-
-	res, err := http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
-	if err != nil {
-		t.Fatalf("Could not post request on signup")
-	}
-
-	resError := models.HttpError{}
-	err = json.NewDecoder(res.Body).Decode(&resError)
-	if err != nil {
-		t.Fatalf("Could not serialize error from response")
-	}
-	assert.Equal(t, resError.Code, 403)
-}
-
-func TestUpdateProfileHandlerFailToAccessPage(t *testing.T) {
-	logger := logging.GetLogger()
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su, logger)
-
-	r := mux.NewRouter()
-	r.Use(middleware.LoggerMiddleware)
-	s := r.PathPrefix("/users").Subrouter()
-	s.Handle("/profile", http.HandlerFunc(uh.UpdateProfileHandler))
-
-	srv := httptest.NewServer(r)
-	defer srv.Close()
-
-	reqUser := models.UserSignUp{
-		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
-	}
-
-	reqBodyBuffer := new(bytes.Buffer)
+	reqBodyBuffer = new(bytes.Buffer)
 	err = json.NewEncoder(reqBodyBuffer).Encode(reqUser)
-	if err != nil {
-		t.Fatalf("Bad json encode")
-	}
+	assert.Nil(t, err)
 
-	reader := bytes.NewReader(reqBodyBuffer.Bytes())
-
-	res, err := http.Post(fmt.Sprintf("%s/users/profile", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
-	if err != nil {
-		t.Fatalf("Could not post request on profile")
-	}
-
-	// buf := new(bytes.Buffer)
-	// buf.ReadFrom(res.Body)
-	// newStr := buf.String()
+	reader = bytes.NewReader(reqBodyBuffer.Bytes())
+	res, err := http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
+	assert.Nil(t, err)
 
 	resError := models.HttpError{}
 	err = json.NewDecoder(res.Body).Decode(&resError)
-	if err != nil {
-		t.Fatalf("Could not serialize error from response")
-	}
-	assert.Equal(t, resError.Code, 404)
+	assert.Nil(t, err)
+
+	assert.Equal(t, resError.Code, http.StatusForbidden)
 }
 
 func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
-	logger := logging.GetLogger()
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
 
 	r := mux.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
@@ -343,44 +178,19 @@ func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
 	defer srv.Close()
 
 	res, err := http.Post(fmt.Sprintf("%s/users/profile", srv.URL), http.DetectContentType(nil), nil)
-	if err != nil {
-		t.Fatalf("Could not post request on profile")
-	}
+	assert.Nil(t, err)
+
 	resError := models.HttpError{}
 	err = json.NewDecoder(res.Body).Decode(&resError)
-	if err != nil {
-		t.Fatalf("Could not serialize error from response")
-	}
-	assert.Equal(t, resError.Code, 400)
+	assert.Nil(t, err)
+
+	assert.Equal(t, resError.Code, http.StatusBadRequest)
 }
 
 func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
-	// loads values from .env into the system
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	uh := NewUserHandler(uu, su, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
 
 	r := mux.NewRouter()
 	r.Use(middleware.LoggerMiddleware)
@@ -390,10 +200,10 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 	srv := httptest.NewServer(r)
 	defer srv.Close()
 
+	uu.On("GetById", int64(-1)).Return(nil, myerr.NotExist)
+
 	res, err := http.Get(fmt.Sprintf("%s/users/profile", srv.URL))
-	if err != nil {
-		t.Fatalf("Could not post request on profile")
-	}
+	assert.Nil(t, err)
 
 	// buf := new(bytes.Buffer)
 	// buf.ReadFrom(res.Body)
@@ -401,8 +211,7 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 
 	resError := models.HttpError{}
 	err = json.NewDecoder(res.Body).Decode(&resError)
-	if err != nil {
-		t.Fatalf("Could not serialize error from response")
-	}
-	assert.Equal(t, resError.Code, 404)
+	assert.Nil(t, err)
+
+	assert.Equal(t, resError.Code, http.StatusNotFound)
 }

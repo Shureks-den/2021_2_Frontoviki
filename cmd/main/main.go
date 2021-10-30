@@ -98,8 +98,8 @@ func main() {
 	catu := categoryUse.NewCategoryUsecase(catr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu, logger)
-	uh := userHttp.NewUserHandler(uu, su, logger)
-	sh := sessHttp.NewSessionHandler(su, uu, logger)
+	uh := userHttp.NewUserHandler(uu, su)
+	sh := sessHttp.NewSessionHandler(su, uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au, logger)
 	cath := categoryHttp.NewCategoryHandler(catu, logger)
 

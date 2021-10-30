@@ -17,7 +17,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/http-swagger v1.1.2
-	github.com/swaggo/swag v1.7.3
 	github.com/tarantool/go-tarantool v0.0.0-20210330210617-56fe55c5fa5c
 )
 
@@ -30,9 +29,9 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.5 // indirect
-	github.com/go-openapi/spec v0.20.3 // indirect
-	github.com/go-openapi/swag v0.19.14 // indirect
+	github.com/go-openapi/jsonreference v0.19.6 // indirect
+	github.com/go-openapi/spec v0.20.4 // indirect
+	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
@@ -49,11 +48,13 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/swaggo/files v0.0.0-20190704085106-630677cd5c14 // indirect
+	github.com/swaggo/swag v1.7.0
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.0 // indirect
+	golang.org/x/tools v0.1.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.2 // indirect

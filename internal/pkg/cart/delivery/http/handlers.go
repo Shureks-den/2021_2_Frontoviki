@@ -1,4 +1,4 @@
-package http
+package delivery
 
 import (
 	"encoding/json"
@@ -17,19 +17,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	logger logging.Logger = logging.GetLogger()
+)
+
 type CartHandler struct {
 	cartUsecase   cart.CartUsecase
 	userUsecase   user.UserUsecase
 	advertUsecase advt.AdvtUsecase
-	logger        logging.Logger
 }
 
-func NewCartHandler(cartUsecase cart.CartUsecase, userUsecase user.UserUsecase, advertUsecase advt.AdvtUsecase, logger logging.Logger) *CartHandler {
+func NewCartHandler(cartUsecase cart.CartUsecase, userUsecase user.UserUsecase, advertUsecase advt.AdvtUsecase) *CartHandler {
 	return &CartHandler{
 		cartUsecase:   cartUsecase,
 		userUsecase:   userUsecase,
 		advertUsecase: advertUsecase,
-		logger:        logger,
 	}
 }
 
@@ -39,7 +41,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ch.GetCartHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
 	// s.HandleFunc("/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("/{id:[0-9]+}/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
@@ -56,7 +58,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 // @failure default {object} models.HttpError
 // @Router /cart/one [post]
 func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -66,7 +68,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&cartInputed)
 	if err != nil {
-		ch.logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("invalid body: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -75,7 +77,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 
 	_, err = govalidator.ValidateStruct(cartInputed)
 	if err != nil {
-		ch.logger.Warnf("invalid data: %s", err.Error())
+		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
@@ -83,7 +85,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 
 	advert, err := ch.advertUsecase.GetAdvert(cartInputed.AdvertId)
 	if err != nil {
-		ch.logger.Warnf("unable to get the advert: %s", err.Error())
+		logger.Warnf("unable to get the advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -92,7 +94,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 
 	_, err = ch.cartUsecase.UpdateCart(userId, &cartInputed, advert.Amount)
 	if err != nil {
-		ch.logger.Warnf("unable to update the cart: %s", err.Error())
+		logger.Warnf("unable to update the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -114,7 +116,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 // @failure default {object} models.HttpError
 // @Router /cart [post]
 func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -124,7 +126,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&cartInputed)
 	if err != nil {
-		ch.logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("invalid body: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -134,7 +136,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 	for _, elCart := range cartInputed {
 		_, err = govalidator.ValidateStruct(elCart)
 		if err != nil {
-			ch.logger.Warnf("invalid data: %s", err.Error())
+			logger.Warnf("invalid data: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 			return
@@ -145,7 +147,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 	for _, element := range cartInputed {
 		advert, err := ch.advertUsecase.GetAdvert(element.AdvertId)
 		if err != nil {
-			ch.logger.Warnf("unable to get the advert: %s", err.Error())
+			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
 			w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -157,7 +159,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 
 	cart, advs, messages, err := ch.cartUsecase.UpdateAllCart(userId, cartInputed, adverts)
 	if err != nil {
-		ch.logger.Warnf("unable to update the cart: %s", err.Error())
+		logger.Warnf("unable to update the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -179,7 +181,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /cart [get]
 func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -187,7 +189,7 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 
 	cart, err := ch.cartUsecase.GetCart(userId)
 	if err != nil {
-		ch.logger.Warnf("unable to get the cart: %s", err.Error())
+		logger.Warnf("unable to get the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -198,7 +200,7 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 	for _, e := range cart {
 		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId)
 		if err != nil {
-			ch.logger.Warnf("unable to get the advert: %s", err.Error())
+			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
 			w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -223,7 +225,7 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 // @failure default {object} models.HttpError
 // @Router /cart/clear [post]
 func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -231,7 +233,7 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 
 	err := ch.cartUsecase.ClearAllCart(userId)
 	if err != nil {
-		ch.logger.Warnf("unable to clear the cart: %s", err.Error())
+		logger.Warnf("unable to clear the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -253,7 +255,7 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 // @failure default {object} models.HttpError
 // @Router /cart/{id}/checkout [post]
 func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
-	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -262,7 +264,7 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
-		ch.logger.Warnf("can not parse id adv: %s", err.Error())
+		logger.Warnf("can not parse id adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -271,7 +273,7 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	order, err := ch.cartUsecase.GetOrderFromCart(userId, advertId)
 	if err != nil {
-		ch.logger.Warnf("error with getting order: %s", err.Error())
+		logger.Warnf("error with getting order: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -280,7 +282,7 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	advert, err := ch.advertUsecase.GetAdvert(advertId)
 	if err != nil {
-		ch.logger.Warnf("error with getting advert: %s", err.Error())
+		logger.Warnf("error with getting advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
@@ -289,16 +291,16 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	salesman, err := ch.userUsecase.GetById(advert.PublisherId)
 	if err != nil {
-		ch.logger.Warnf("error with getting salesman: %s", err.Error())
+		logger.Warnf("error with getting salesman: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
 
-	err = ch.cartUsecase.MakeOrder(order, advert, salesman)
+	err = ch.cartUsecase.MakeOrder(order, advert)
 	if err != nil {
-		ch.logger.Warnf("can not make order: %s", err.Error())
+		logger.Warnf("can not make order: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))

@@ -6,286 +6,216 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"strings"
 	"testing"
-	"yula/internal/config"
-	"yula/internal/database"
+	"time"
 	"yula/internal/models"
-	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
-	userRep "yula/internal/pkg/user/repository"
-	userUse "yula/internal/pkg/user/usecase"
 
-	sessRep "yula/internal/pkg/session/repository"
-	sessUse "yula/internal/pkg/session/usecase"
+	myerr "yula/internal/error"
 
-	imageloaderRepo "yula/internal/pkg/image_loader/repository"
-	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+	userMock "yula/internal/pkg/user/mocks"
 
+	sessMock "yula/internal/pkg/session/mocks"
+
+	imageloader "yula/internal/pkg/image_loader"
+
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
-var password = "c0mplex"
+var password string = "c0mplex"
 var testUser = &models.UserSignUp{
-	Email:    "test15@email.com",
+	Email:    "tes5trtrgrwt4145@email.com",
 	Password: password,
 	Name:     "test",
 	Surname:  "surtest",
 }
 
 func TestSession_SignInHandler_Success(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
-
-	bytes := bytes.NewReader([]byte(fmt.Sprintf(`
-	{
-		"email": "test@email.com",
-		"password": "%s",
-		""
-	}
-	`, password)))
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	_, serverErr := uu.Create(testUser)
-	if serverErr != nil {
-		t.Fatal()
-	}
-
-	// сам тест
-	r := httptest.NewRequest("POST", "/signin", bytes)
-	w := httptest.NewRecorder()
-
-	sh := NewSessionHandler(su, uu, logger)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
 	router.Use(middleware.LoggerMiddleware)
 	sh.Routing(router)
 
-	sh.SignInHandler(w, r)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
+	reqUser := models.UserSignIn{
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	user := models.UserData{
+		Id:        258,
+		Email:     reqUser.Email,
+		Password:  "aboba",
+		CreatedAt: time.Now(),
+		Image:     imageloader.DefaultAdvertImage,
+		Rating:    0,
+	}
+
+	sessionCreated := models.Session{
+		Value:     uuid.NewString(),
+		UserId:    user.Id,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	uu.On("GetByEmail", reqUser.Email).Return(&user, nil)
+	uu.On("CheckPassword", &user, reqUser.Password).Return(nil)
+
+	su.On("Create", user.Id).Return(&sessionCreated, nil).Once()
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/signin", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
+
 	assert.Equal(t, Answer.Code, 200)
 	assert.Equal(t, Answer.Message, "signin successfully")
 }
 
 func TestSession_SignInHandler_InvalidEmail(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
-
-	bytes := bytes.NewReader([]byte(fmt.Sprintf(`
-	{
-		"email": "invalid",
-		"password": "%s"
-	}
-	`, password)))
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	// сам тест
-	r := httptest.NewRequest("POST", "/signin", bytes)
-	w := httptest.NewRecorder()
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
 	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
-	sh.SignInHandler(w, r)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
+	reqUser := models.UserSignIn{
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	uu.On("GetByEmail", reqUser.Email).Return(nil, myerr.NotExist)
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/signin", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
+
 	assert.Equal(t, Answer.Code, 404)
-	assert.Equal(t, Answer.Message, "user with this email not exist")
+	assert.Equal(t, Answer.Message, "not exist")
 }
 
 func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
-
-	bytes := bytes.NewReader([]byte(`
-	{
-		"email": "test@email.com",
-		"password": "baobab"
-	}
-	`))
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	// сам тест
-	r := httptest.NewRequest("POST", "/signin", bytes)
-	w := httptest.NewRecorder()
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
 	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
-	sh.SignInHandler(w, r)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
+	reqUser := models.UserSignIn{
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	user := models.UserData{
+		Id:        258,
+		Email:     reqUser.Email,
+		Password:  "aboba",
+		CreatedAt: time.Now(),
+		Image:     imageloader.DefaultAdvertImage,
+		Rating:    0,
+	}
+
+	uu.On("GetByEmail", reqUser.Email).Return(&user, nil)
+	uu.On("CheckPassword", &user, reqUser.Password).Return(myerr.PasswordMismatch)
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/signin", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
+
 	assert.Equal(t, Answer.Code, 401)
-	assert.Equal(t, Answer.Message, "no rights to access this resource")
+	assert.Equal(t, Answer.Message, "password mismatch")
 }
 
 func TestSession_SignInHandler_InvalidBody(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
-
-	bytes := bytes.NewReader(nil)
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	// сам тест
-	r := httptest.NewRequest("POST", "/signin", bytes)
-	w := httptest.NewRecorder()
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
 	router := mux.NewRouter().PathPrefix("/").Subrouter()
 	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
 	sh.Routing(router)
 
-	sh.SignInHandler(w, r)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
-	}
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/signin", srv.URL), nil)
+	assert.Nil(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, Answer.Code, 400)
-	assert.Equal(t, Answer.Message, "EOF")
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, http.StatusInternalServerError)
 }
 
 func TestSession_LogOutHandler_Success(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	router := mux.NewRouter().PathPrefix("/").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	sh.Routing(router)
 
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	session, err := su.Create(0)
-	assert.Equal(t, err, nil)
+	session := models.Session{Value: uuid.NewString(), UserId: 255159, ExpiresAt: time.Now().Add(time.Hour)}
 	cookie := http.Cookie{
 		Name:     "session_id",
 		Value:    session.Value,
@@ -295,59 +225,40 @@ func TestSession_LogOutHandler_Success(t *testing.T) {
 		HttpOnly: true,
 	}
 
-	r := httptest.NewRequest("POST", "/logout", nil)
-	r.AddCookie(&cookie)
-	w := httptest.NewRecorder()
+	su.On("Delete", cookie.Value).Return(nil)
 
-	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
-	sh.Routing(router)
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/logout", srv.URL), nil)
+	assert.Nil(t, err)
 
-	sh.LogOutHandler(w, r)
+	req.AddCookie(&cookie)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
 
 	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
-	}
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, Answer.Code, 200)
 	assert.Equal(t, Answer.Message, "logout successfully")
 }
 
 func TestSession_LogOutHandler_InvalidName(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	router := mux.NewRouter().PathPrefix("/").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	sh.Routing(router)
 
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	session, err := su.Create(0)
-	assert.Equal(t, err, nil)
+	session := models.Session{Value: uuid.NewString(), UserId: 255159, ExpiresAt: time.Now().Add(time.Hour)}
 	cookie := http.Cookie{
-		Name:     "no_session_id",
+		Name:     "not_session_id",
 		Value:    session.Value,
 		Expires:  session.ExpiresAt,
 		Secure:   true,
@@ -355,84 +266,60 @@ func TestSession_LogOutHandler_InvalidName(t *testing.T) {
 		HttpOnly: true,
 	}
 
-	r := httptest.NewRequest("POST", "/logout", nil)
-	r.AddCookie(&cookie)
-	w := httptest.NewRecorder()
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/logout", srv.URL), nil)
+	assert.Nil(t, err)
 
-	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
-	sh.Routing(router)
+	req.AddCookie(&cookie)
 
-	sh.LogOutHandler(w, r)
+	res, err := client.Do(req)
+	assert.Nil(t, err)
 
 	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
-	}
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, Answer.Code, 401)
-	assert.Equal(t, Answer.Message, "no rights to access this resource")
+	assert.Equal(t, Answer.Message, "unauthorized")
 }
 
 func TestSession_LogOutHandler_InvalidValue(t *testing.T) {
-	logger := logging.GetLogger()
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-5], "/")
-	fmt.Println(pwd, err)
+	su := sessMock.SessionUsecase{}
+	uu := userMock.UserUsecase{}
+	sh := NewSessionHandler(&su, &uu)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
+	router := mux.NewRouter().PathPrefix("/").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	sh.Routing(router)
 
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	defer postgres.Close()
+	srv := httptest.NewServer(router)
+	defer srv.Close()
 
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-
-	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
-
-	uu := userUse.NewUserUsecase(ur, ilu)
-	su := sessUse.NewSessionUsecase(sr)
-
-	session, err := su.Create(0)
-	assert.Equal(t, err, nil)
+	session := models.Session{Value: uuid.NewString(), UserId: 255159, ExpiresAt: time.Now().Add(time.Hour)}
 	cookie := http.Cookie{
 		Name:     "session_id",
-		Value:    "invalid_value",
+		Value:    "aboba",
 		Expires:  session.ExpiresAt,
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
 		HttpOnly: true,
 	}
 
-	r := httptest.NewRequest("POST", "/logout", nil)
-	r.AddCookie(&cookie)
-	w := httptest.NewRecorder()
+	su.On("Delete", cookie.Value).Return(myerr.NotExist)
 
-	router := mux.NewRouter().PathPrefix("/").Subrouter()
-	router.Use(middleware.LoggerMiddleware)
-	sh := NewSessionHandler(su, uu, logger)
-	sh.Routing(router)
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/logout", srv.URL), nil)
+	assert.Nil(t, err)
 
-	sh.LogOutHandler(w, r)
+	req.AddCookie(&cookie)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
 
 	var Answer models.HttpError
-	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
-	}
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, Answer.Code, 500)
-	assert.Equal(t, Answer.Message, "something went wrong")
+	assert.Equal(t, Answer.Code, 404)
+	assert.Equal(t, Answer.Message, "not exist")
 }
