@@ -2,6 +2,8 @@ package cart
 
 import "yula/internal/models"
 
+//go:generate mockery -name=CartUsecase
+
 type CartUsecase interface {
 	GetOrderFromCart(userId int64, advertId int64) (*models.Cart, error)
 	GetCart(userId int64) ([]*models.Cart, error)

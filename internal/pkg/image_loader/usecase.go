@@ -9,6 +9,8 @@ const (
 	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image.png"
 )
 
+//go:generate mockery -name=ImageLoaderUsecase
+
 type ImageLoaderUsecase interface {
 	Upload(headerFile *multipart.FileHeader, dir string) (string, error)
 	UploadAvatar(headerFile *multipart.FileHeader) (string, error)

@@ -7,7 +7,6 @@ import (
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/logging"
-	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
@@ -20,12 +19,11 @@ import (
 type SessionHandler struct {
 	sessionUsecase session.SessionUsecase
 	userUsecase    user.UserUsecase
-	logger         logging.Logger
 }
 
-func NewSessionHandler(sessionUsecase session.SessionUsecase, userUsecase user.UserUsecase, logger logging.Logger) *SessionHandler {
+func NewSessionHandler(sessionUsecase session.SessionUsecase, userUsecase user.UserUsecase) *SessionHandler {
 	return &SessionHandler{
-		sessionUsecase: sessionUsecase, userUsecase: userUsecase, logger: logger,
+		sessionUsecase: sessionUsecase, userUsecase: userUsecase,
 	}
 }
 
@@ -33,6 +31,10 @@ func (sh *SessionHandler) Routing(r *mux.Router) {
 	r.HandleFunc("/signin", sh.SignInHandler).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/logout", sh.LogOutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
+
+var (
+	logger logging.Logger = logging.GetLogger()
+)
 
 // SignInHandler godoc
 // @Summary Sign in
@@ -45,13 +47,13 @@ func (sh *SessionHandler) Routing(r *mux.Router) {
 // @failure default {object} models.HttpError
 // @Router /signin [post]
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {
-	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	var signInUser models.UserSignIn
 
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&signInUser)
 	if err != nil {
-		sh.logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("bad request: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -65,7 +67,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	_, err = govalidator.ValidateStruct(signInUser)
 	if err != nil {
-		sh.logger.Warnf("invalid data: %s", err.Error())
+		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
@@ -74,7 +76,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	user, err := sh.userUsecase.GetByEmail(signInUser.Email)
 	if err != nil {
-		sh.logger.Warnf("can not get by email: %s", err.Error())
+		logger.Warnf("can not get by email: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -84,7 +86,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = sh.userUsecase.CheckPassword(user, signInUser.Password)
 	if err != nil {
-		sh.logger.Warnf("wrong password check: %s", err.Error())
+		logger.Warnf("wrong password check: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -94,7 +96,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	userSession, err := sh.sessionUsecase.Create(user.Id)
 	if err != nil {
-		sh.logger.Warnf("can not create user: %s", err.Error())
+		logger.Warnf("can not create user: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -113,7 +115,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "signin successfully", nil))
-	sh.logger.Debug("signin successfully")
+	logger.Debug("signin successfully")
 }
 
 // SignInHandler godoc
@@ -126,10 +128,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 // @failure default {object} models.HttpError
 // @Router /logout [post]
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
-	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	session, err := r.Cookie("session_id")
 	if err != nil {
-		sh.logger.Warnf("unauthorized: %s", err.Error())
+		logger.Warnf("unauthorized: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.Unauthorized)
@@ -139,7 +141,7 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 
 	err = sh.sessionUsecase.Delete(session.Value)
 	if err != nil {
-		sh.logger.Warnf("can not delete session: %s", err.Error())
+		logger.Warnf("can not delete session: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -152,5 +154,5 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "logout successfully", nil))
-	sh.logger.Debug("logout successfully")
+	logger.Debug("logout successfully")
 }

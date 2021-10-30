@@ -45,6 +45,9 @@ func (l *Logger) GetLoggerWithField(w string, v interface{}) Logger {
 }
 
 func (l *Logger) GetLoggerWithFields(fields logrus.Fields) Logger {
+	if fields == nil {
+		return Logger{e}
+	}
 	return Logger{l.WithFields(fields)}
 }
 
