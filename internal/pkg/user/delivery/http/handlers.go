@@ -53,7 +53,7 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 // @Router /signup [post]
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	var signUpUser models.UserSignUp
-	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&signUpUser)
@@ -126,7 +126,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 // @Router /users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
-	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
@@ -160,7 +160,7 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 // @Router /users/profile [post]
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
 	var userId int64
-	uh.logger.WithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	uh.logger.WithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
@@ -214,7 +214,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /users/profile/upload [post]
 func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.Request) {
-	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -268,7 +268,7 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 // @failure default {object} models.HttpError
 // @Router /users/profile/password [post]
 func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
-	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	uh.logger = uh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)

@@ -8,15 +8,20 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
+	"github.com/gorilla/csrf"
 	"github.com/sirupsen/logrus"
 )
 
 type contextKey string
 
 const ContextUserId contextKey = "user_id"
+const ContextLoggerField contextKey = "logger fields"
+
+const SCRFToken = "c4e0344db55a8e7e5b79f5d2c9ff317c"
 
 type SessionMiddleware struct {
 	sessionUsecase session.SessionUsecase
@@ -114,7 +119,7 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		x_request_id := fmt.Sprint("", rand.Int())
-		ctx := context.WithValue(r.Context(), "logger fields",
+		ctx := context.WithValue(r.Context(), ContextLoggerField,
 			logrus.Fields{
 				"x_request_id": x_request_id,
 				"method":       r.Method,
@@ -122,4 +127,26 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 			})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func SetSCRFToken(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-CSRF-Token", csrf.Token(r))
+		next.ServeHTTP(w, r)
+	}
+}
+
+func CSRFMiddleWare() func(http.Handler) http.Handler {
+	return csrf.Protect(
+		[]byte("very-secret-key"),
+		csrf.ErrorHandler(CSRFErrorHandler()),
+	)
+}
+
+func CSRFErrorHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.CSRFErrorToken)
+		w.WriteHeader(metaCode)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+	}
 }

@@ -172,3 +172,12 @@ func (au *AdvtUsecase) AdvertsToShort(adverts []*models.Advert) []*models.Advert
 	}
 	return advertsShort
 }
+
+func (au *AdvtUsecase) GetAdvertListByCategory(categoryName string, page *models.Page) ([]*models.Advert, error) {
+	adverts, err := au.advtRepository.SelectAdvertsByCategory(categoryName, page.PageNum, page.Count)
+	if err != nil {
+		return nil, err
+	}
+
+	return adverts, nil
+}

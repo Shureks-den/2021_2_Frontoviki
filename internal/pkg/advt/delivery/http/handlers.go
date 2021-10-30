@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -34,9 +35,10 @@ func NewAdvertHandler(advtUsecase advt.AdvtUsecase, userUsecase user.UserUsecase
 func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	s := r.PathPrefix("/adverts").Subrouter()
 
-	s.HandleFunc("", ah.AdvertListHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(ah.AdvertListHandler)).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("", sm.CheckAuthorized(http.HandlerFunc(ah.CreateAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/archive", sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/{category}", ah.AdvertListByCategoryHandler).Methods(http.MethodGet, http.MethodOptions)
 
 	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
@@ -77,7 +79,7 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	advts, err := ah.advtUsecase.GetListAdvt(page.PageNum, page.Count, true)
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	if err != nil {
 		ah.logger.Warnf("get list advt error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -104,7 +106,7 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 // @failure default {object} models.HttpError
 // @Router /adverts [post]
 func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -158,7 +160,7 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -208,7 +210,7 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /adverts/{id} [post]
 func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -281,7 +283,7 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /adverts/{id} [delete]
 func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -324,7 +326,7 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /adverts/{id}/close [post]
 func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -368,7 +370,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /adverts/{id}/upload [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -443,7 +445,7 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /adverts/salesman/{id} [get]
 func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	vars := mux.Vars(r)
 	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -508,7 +510,7 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 // @failure default {object} models.HttpError
 // @Router /adverts/archive [get]
 func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) {
-	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -545,4 +547,44 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "archive got", body))
+}
+
+// AdvertListByCategoryHandler godoc
+// @Summary Get adverts by category
+// @Description Get adverts by category
+// @Tags advert
+// @Accept application/json
+// @Produce application/json
+// @Param id path integer true "Salesman id"
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdverts}
+// @failure default {object} models.HttpError
+// @Router /adverts/{category} [get]
+func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+
+	categoryName := path.Base(r.URL.Path)
+	query := r.URL.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		ah.logger.Warnf("can not create page: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetAdvertListByCategory(categoryName, page)
+	if err != nil {
+		ah.logger.Warnf("can not get adverts: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: adverts}
+	w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
 }

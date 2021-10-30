@@ -229,7 +229,7 @@ const (
 		JOIN category c ON a.category_id = c.Id 
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new
 		HAVING a.publisher_id = $1 %s %s 
 		LIMIT $2 OFFSET $3;
 	`
@@ -276,5 +276,51 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 		adverts = append(adverts, &advert)
 	}
 
+	return adverts, nil
+}
+
+func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, count int64) ([]*models.Advert, error) {
+	queryStr := `
+		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new 
+		FROM (
+			SELECT * FROM advert WHERE category_id = (SELECT id FROM category WHERE lower(name) = lower($1))
+		) as a 
+		JOIN category c ON a.category_id = c.Id
+		LEFT JOIN advert_image ai ON a.id = ai.advert_id
+		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+				a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new 
+		HAVING a.is_active = true
+		LIMIT $2 OFFSET $3;
+	`
+	query, err := ar.pool.Query(context.Background(), queryStr, categoryName, count, from*count)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, internalError.InternalError
+	}
+
+	defer query.Close()
+	adverts := make([]*models.Advert, 0)
+	for query.Next() {
+		var advert models.Advert
+		var advertPathImages []*string
+
+		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+
+		if err != nil {
+			return nil, internalError.DatabaseError
+		}
+
+		advert.Images = []string{}
+		for _, path := range advertPathImages {
+			if path != nil {
+				advert.Images = append(advert.Images, *path)
+			}
+		}
+
+		adverts = append(adverts, &advert)
+	}
 	return adverts, nil
 }
