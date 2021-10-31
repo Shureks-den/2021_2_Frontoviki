@@ -17,6 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/http-swagger v1.1.2
+	github.com/swaggo/swag v1.7.3
 	github.com/tarantool/go-tarantool v0.0.0-20210330210617-56fe55c5fa5c
 )
 
