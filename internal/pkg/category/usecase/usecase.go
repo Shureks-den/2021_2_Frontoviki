@@ -17,9 +17,5 @@ func NewCategoryUsecase(categoryRepository category.CategoryRepository) category
 
 func (cu *CategoryUsecase) GetCategories() ([]*models.Category, error) {
 	categories, err := cu.categoryRepository.SelectCategories()
-	if err != nil {
-		return nil, err
-	}
-
-	return categories, nil
+	return categories, err
 }
