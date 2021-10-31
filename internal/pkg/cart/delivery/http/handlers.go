@@ -39,7 +39,7 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ch.GetCartHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
 	// s.HandleFunc("/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("/{id:[0-9]+}/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)

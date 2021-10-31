@@ -6,6 +6,7 @@ import (
 	"yula/internal/models"
 	"yula/internal/pkg/category"
 	"yula/internal/pkg/logging"
+	"yula/internal/pkg/middleware"
 
 	"github.com/gorilla/mux"
 )
@@ -24,7 +25,7 @@ func NewCategoryHandler(categoryUsecase category.CategoryUsecase, logger logging
 
 func (ch *CategoryHandler) Routing(r *mux.Router) {
 	s := r.PathPrefix("/category").Subrouter()
-	s.HandleFunc("", ch.CategoriesListHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ch.CategoriesListHandler))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 // CategoriesListHandler godoc

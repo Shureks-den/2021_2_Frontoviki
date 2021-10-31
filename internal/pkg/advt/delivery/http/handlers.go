@@ -36,18 +36,18 @@ func NewAdvertHandler(advtUsecase advt.AdvtUsecase, userUsecase user.UserUsecase
 func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	s := r.PathPrefix("/adverts").Subrouter()
 
-	s.HandleFunc("", middleware.SetSCRFToken(ah.AdvertListHandler)).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertListHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("", sm.CheckAuthorized(http.HandlerFunc(ah.CreateAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
-	s.Handle("/archive", sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))).Methods(http.MethodGet, http.MethodOptions)
-	s.HandleFunc("/category/{category}", ah.AdvertListByCategoryHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/archive", middleware.SetSCRFToken(http.Handler(sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/category/{category}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertListByCategoryHandler))).Methods(http.MethodGet, http.MethodOptions)
 
-	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertDetailHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 
-	s.HandleFunc("/salesman/{id:[0-9]+}", ah.SalesmanPageHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 // AdvertListHandler godoc

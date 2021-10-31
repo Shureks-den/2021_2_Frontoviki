@@ -12,6 +12,7 @@ import (
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/csrf"
 	"github.com/sirupsen/logrus"
 )
@@ -75,6 +76,7 @@ func CorsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location")
+		w.Header().Set("Access-Control-Expose-Headers", "X-CSRF-Token")
 		w.Header().Set("Access-Control-Max-Age", "600")
 		if r.Method == "OPTIONS" {
 			return
@@ -129,7 +131,7 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func SetSCRFToken(next http.HandlerFunc) http.HandlerFunc {
+func SetSCRFToken(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-CSRF-Token", csrf.Token(r))
 		next.ServeHTTP(w, r)
@@ -137,8 +139,14 @@ func SetSCRFToken(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func CSRFMiddleWare() func(http.Handler) http.Handler {
+	space := uuid.New()
+	sha := uuid.NewSHA1(space, []byte("csrf token"))
+	md := uuid.NewMD5(space, []byte("csrf token"))
+	token := sha.String() + "-" + md.String()
+
 	return csrf.Protect(
-		[]byte("very-secret-key"),
+		[]byte(token),
+		csrf.Path("/"),
 		csrf.ErrorHandler(CSRFErrorHandler()),
 	)
 }
