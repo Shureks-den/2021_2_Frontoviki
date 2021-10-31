@@ -36,7 +36,7 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	r.HandleFunc("/signup", uh.SignUpHandler).Methods(http.MethodPost, http.MethodOptions)
 
 	s := r.PathPrefix("/users").Subrouter()
-	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/profile", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(uh.GetProfileHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/password", sm.CheckAuthorized(http.HandlerFunc(uh.ChangePasswordHandler))).Methods(http.MethodPost, http.MethodOptions)
