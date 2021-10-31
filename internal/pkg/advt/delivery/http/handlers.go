@@ -15,6 +15,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,7 +39,7 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.HandleFunc("", middleware.SetSCRFToken(ah.AdvertListHandler)).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("", sm.CheckAuthorized(http.HandlerFunc(ah.CreateAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/archive", sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))).Methods(http.MethodGet, http.MethodOptions)
-	s.HandleFunc("/{category}", ah.AdvertListByCategoryHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/category/{category}", ah.AdvertListByCategoryHandler).Methods(http.MethodGet, http.MethodOptions)
 
 	s.HandleFunc("/{id:[0-9]+}", ah.AdvertDetailHandler).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
@@ -123,6 +124,12 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
+
+	sanitize := bluemonday.UGCPolicy()
+	advert.Name = sanitize.Sanitize(advert.Name)
+	advert.Description = sanitize.Sanitize(advert.Description)
+	advert.Location = sanitize.Sanitize(advert.Location)
+	advert.Category = sanitize.Sanitize(advert.Category)
 
 	_, err = govalidator.ValidateStruct(advert)
 	if err != nil {
@@ -246,6 +253,12 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		w.Write(models.ToBytes(http.StatusConflict, "no rights to access", nil))
 		return
 	}
+
+	sanitize := bluemonday.UGCPolicy()
+	newAdvert.Name = sanitize.Sanitize(newAdvert.Name)
+	newAdvert.Description = sanitize.Sanitize(newAdvert.Description)
+	newAdvert.Location = sanitize.Sanitize(newAdvert.Location)
+	newAdvert.Category = sanitize.Sanitize(newAdvert.Category)
 
 	_, err = govalidator.ValidateStruct(newAdvert)
 	if err != nil {
@@ -560,7 +573,7 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 // @Param count query string false "Count adverts per page"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdverts}
 // @failure default {object} models.HttpError
-// @Router /adverts/{category} [get]
+// @Router /adverts/category/{category} [get]
 func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	ah.logger = ah.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 
@@ -574,6 +587,8 @@ func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *h
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
+
+	categoryName = bluemonday.UGCPolicy().Sanitize(categoryName)
 
 	adverts, err := ah.advtUsecase.GetAdvertListByCategory(categoryName, page)
 	if err != nil {

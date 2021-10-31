@@ -11,6 +11,7 @@ import (
 	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 
 	"github.com/asaskevich/govalidator"
@@ -65,6 +66,12 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
+
+	sanitizer := bluemonday.UGCPolicy()
+	signUpUser.Email = sanitizer.Sanitize(signUpUser.Email)
+	signUpUser.Password = sanitizer.Sanitize(signUpUser.Password)
+	signUpUser.Name = sanitizer.Sanitize(signUpUser.Name)
+	signUpUser.Surname = sanitizer.Sanitize(signUpUser.Surname)
 
 	_, err = govalidator.ValidateStruct(signUpUser)
 	if err != nil {
@@ -177,6 +184,13 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	sanitizer := bluemonday.UGCPolicy()
+	userNew.Email = sanitizer.Sanitize(userNew.Email)
+	userNew.Password = sanitizer.Sanitize(userNew.Password)
+	userNew.Name = sanitizer.Sanitize(userNew.Name)
+	userNew.Surname = sanitizer.Sanitize(userNew.Surname)
+	userNew.Image = sanitizer.Sanitize(userNew.Image)
+
 	_, err = govalidator.ValidateStruct(userNew)
 	if err != nil {
 		uh.logger.Warnf("invalid data: %s", err.Error())
@@ -285,6 +299,11 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
+
+	sanitizer := bluemonday.UGCPolicy()
+	changePassword.Email = sanitizer.Sanitize(changePassword.Email)
+	changePassword.Password = sanitizer.Sanitize(changePassword.Password)
+	changePassword.NewPassword = sanitizer.Sanitize(changePassword.NewPassword)
 
 	_, err = govalidator.ValidateStruct(changePassword)
 	if err != nil {

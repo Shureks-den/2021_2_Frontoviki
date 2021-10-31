@@ -13,6 +13,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
 
@@ -57,6 +58,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
+
+	sanitizer := bluemonday.UGCPolicy()
+	signInUser.Email = sanitizer.Sanitize(signInUser.Email)
+	signInUser.Password = sanitizer.Sanitize(signInUser.Password)
 
 	_, err = govalidator.ValidateStruct(signInUser)
 	if err != nil {
