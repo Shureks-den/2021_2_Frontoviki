@@ -64,6 +64,7 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 // @failure default {object} models.HttpError
 // @Router /adverts [get]
 func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	u, err := url.Parse(r.URL.RequestURI())
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
@@ -82,7 +83,6 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	advts, err := ah.advtUsecase.GetListAdvt(page.PageNum, page.Count, true)
-	logger = logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
 	if err != nil {
 		logger.Warnf("get list advt error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
