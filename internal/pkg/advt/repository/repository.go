@@ -8,6 +8,7 @@ import (
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
+	imageloader "yula/internal/pkg/image_loader"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -64,6 +65,10 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 			}
 		}
 
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
+		}
+
 		adverts = append(adverts, advert)
 	}
 
@@ -83,6 +88,7 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount, advert.IsNew)
 
 	if err := query.Scan(&advert.Id); err != nil {
+		fmt.Println(err.Error())
 		rollbackErr := tx.Rollback(context.Background())
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -273,6 +279,10 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 			}
 		}
 
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
+		}
+
 		adverts = append(adverts, &advert)
 	}
 
@@ -318,6 +328,10 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 			if path != nil {
 				advert.Images = append(advert.Images, *path)
 			}
+		}
+
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
 		}
 
 		adverts = append(adverts, &advert)

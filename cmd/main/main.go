@@ -81,7 +81,7 @@ func main() {
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
 	api.Use(middleware.LoggerMiddleware)
-	api.Use(middleware.CSRFMiddleWare())
+	// api.Use(middleware.CSRFMiddleWare())
 
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
@@ -101,7 +101,7 @@ func main() {
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
-	cath := categoryHttp.NewCategoryHandler(catu, logger)
+	cath := categoryHttp.NewCategoryHandler(catu)
 
 	sm := middleware.NewSessionMiddleware(su)
 
