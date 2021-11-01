@@ -134,3 +134,10 @@ func SetMaxCopies(amount int64) error {
 		Message: fmt.Sprintf("not enough copies. max amount: %d", amount),
 	}
 }
+
+func GenInternalError(err error) error {
+	return ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: err.Error(),
+	}
+}

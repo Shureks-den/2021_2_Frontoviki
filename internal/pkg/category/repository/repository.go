@@ -23,7 +23,7 @@ func (cr *CategoryRepository) SelectCategories() ([]*models.Category, error) {
 	queryStr := "SELECT name FROM category;"
 	query, err := cr.pool.Query(context.Background(), queryStr)
 	if err != nil {
-		return nil, internalError.InternalError
+		return nil, internalError.GenInternalError(err)
 	}
 
 	defer query.Close()
@@ -33,7 +33,7 @@ func (cr *CategoryRepository) SelectCategories() ([]*models.Category, error) {
 
 		err = query.Scan(&ctgry.Name)
 		if err != nil {
-			return nil, internalError.InternalError
+			return nil, internalError.GenInternalError(err)
 		}
 
 		categories = append(categories, &ctgry)

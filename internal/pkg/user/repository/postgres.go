@@ -23,7 +23,7 @@ func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
 func (ur *UserRepository) Insert(user *models.UserData) error {
 	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		return internalError.GenInternalError(err)
 	}
 
 	row := tx.QueryRow(context.Background(),
@@ -39,7 +39,7 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 			return internalError.RollbackError
 		}
 
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -62,7 +62,7 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) 
 		case "no rows in result set":
 			return nil, internalError.EmptyQuery
 		}
-		return nil, internalError.DatabaseError
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &user, nil
@@ -79,7 +79,7 @@ func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 		case "no rows in result set":
 			return nil, internalError.EmptyQuery
 		}
-		return nil, internalError.DatabaseError
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &user, nil
@@ -88,7 +88,7 @@ func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 func (ur *UserRepository) Update(user *models.UserData) error {
 	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		return internalError.GenInternalError(err)
 	}
 
 	ct, err := tx.Exec(context.Background(),
@@ -105,7 +105,7 @@ func (ur *UserRepository) Update(user *models.UserData) error {
 			return internalError.NotUpdated
 		}
 
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())

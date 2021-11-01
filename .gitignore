@@ -12,6 +12,7 @@
 
 # Output
 *.out
+internal/pkg/cover
 
 # VS Code
 .vscode/*
