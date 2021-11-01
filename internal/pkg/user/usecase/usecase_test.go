@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"mime/multipart"
 	"testing"
 	"yula/internal/models"
 
@@ -9,11 +10,14 @@ import (
 
 	imageloader "yula/internal/pkg/image_loader"
 
+	imageloaderMocks "yula/internal/pkg/image_loader/mocks"
+
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -174,25 +178,112 @@ func TestUpdateUserProfile(t *testing.T) {
 	ur := mocks.UserRepository{}
 	uu := NewUserUsecase(&ur, ilu)
 
-	reqUser := models.UserSignUp{
+	reqUser := models.UserData{
+		Id:       0,
 		Password: "password",
 		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
 	}
 
-	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
-	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
+	ur.On("SelectById", reqUser.Id).Return(&reqUser, nil)
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.NotExist)
+	ur.On("Update", &reqUser).Return(nil)
 
-	createdUser, error := uu.Create(&reqUser)
+	newProfile, error := uu.UpdateProfile(reqUser.Id, &reqUser)
 	assert.Nil(t, error)
 
-	createdUser.Email = "aboba@obama.com"
+	assert.Equal(t, newProfile, reqUser.ToProfile())
+}
 
-	ur.On("SelectById", createdUser.Id).Return(createdUser, nil)
-	ur.On("SelectByEmail", createdUser.Email).Return(nil, myerr.NotExist).Once()
-	ur.On("Update", createdUser).Return(nil).Once()
+func TestUpdateUserAlreadyExist(t *testing.T) {
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
-	newProfile, error := uu.UpdateProfile(createdUser.Id, createdUser)
+	userActual := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+	}
+
+	userNew := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "aaaaa@shibanov.jp",
+		Name:     "baobab",
+	}
+
+	userOther := models.UserData{
+		Id:       150,
+		Password: "kabalfmbfal",
+		Email:    "aaaaa@shibanov.jp",
+		Name:     "kgrmwgwmgklwg",
+	}
+
+	ur.On("SelectById", userNew.Id).Return(&userActual, nil)
+	ur.On("SelectByEmail", userNew.Email).Return(&userOther, nil)
+
+	newProfile, error := uu.UpdateProfile(userNew.Id, &userNew)
+	assert.Equal(t, error, myerr.AlreadyExist)
+
+	assert.Nil(t, newProfile)
+}
+
+func TestUploadAvatarSuccess(t *testing.T) {
+	ur := mocks.UserRepository{}
+	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
+	uu := NewUserUsecase(&ur, &mockedILU)
+
+	user := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+		Image:    "not default",
+	}
+
+	file := multipart.FileHeader{
+		Filename: "aboba.txt",
+		Size:     0,
+	}
+
+	ur.On("SelectById", user.Id).Return(&user, nil)
+	mockedILU.On("UploadAvatar", &file).Return("/home/aboba/"+file.Filename, nil)
+	mockedILU.On("RemoveAvatar", user.Image).Return(nil)
+	ur.On("Update", &user).Return(nil)
+
+	newUser, error := uu.UploadAvatar(&file, user.Id)
+	assert.Equal(t, newUser.Image, "/home/aboba/"+file.Filename)
+
 	assert.Nil(t, error)
+}
 
-	assert.Equal(t, newProfile, createdUser.ToProfile())
+func TestUpdatePasswordSuccess(t *testing.T) {
+	ur := mocks.UserRepository{}
+	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
+	uu := NewUserUsecase(&ur, &mockedILU)
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+
+	user := models.UserData{
+		Id:       0,
+		Password: string(passwordHash),
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+		Image:    "not default",
+	}
+
+	assert.Nil(t, err)
+
+	cp := models.ChangePassword{
+		Email:       user.Email,
+		Password:    "password",
+		NewPassword: "newpassword",
+	}
+
+	ur.On("SelectById", user.Id).Return(&user, nil)
+	ur.On("Update", &user).Return(nil)
+
+	error := uu.UpdatePassword(user.Id, &cp)
+	assert.Nil(t, error)
 }

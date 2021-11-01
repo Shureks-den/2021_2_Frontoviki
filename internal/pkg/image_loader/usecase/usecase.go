@@ -2,11 +2,21 @@ package usecase
 
 import (
 	"mime/multipart"
+	"strings"
 	internalError "yula/internal/error"
 	imageloader "yula/internal/pkg/image_loader"
 
 	"github.com/google/uuid"
 )
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
 
 type ImageLoaderUsecase struct {
 	imageLoaderRepo imageloader.ImageLoaderRepository
@@ -19,15 +29,12 @@ func NewImageLoaderUsecase(imageLoaderRepo imageloader.ImageLoaderRepository) im
 }
 
 func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir string) (string, error) {
-	extension := ""
+	availableFormats := []string{"png", "jpeg"}
 
 	ct := headerFile.Header.Get("Content-Type")
-	switch ct {
-	case "image/png":
-		extension = "png"
-	case "image/jpeg":
-		extension = "jpeg"
-	default:
+
+	extension := ct[strings.LastIndex(ct, "/")+1:]
+	if !contains(availableFormats, extension) {
 		return "", internalError.UnknownExtension
 	}
 
@@ -51,19 +58,6 @@ func (ilu *ImageLoaderUsecase) RemoveAvatar(filePath string) error {
 	return ilu.imageLoaderRepo.Delete(filePath)
 }
 
-func (ilu *ImageLoaderUsecase) UploadAdvertImages(headerFiles []*multipart.FileHeader) ([]string, error) {
-	var urls []string
-	for _, file := range headerFiles {
-		url, err := ilu.Upload(file, imageloader.AdvertImageDirectory)
-		if err != nil {
-			return []string{}, err
-		}
-
-		urls = append(urls, url)
-	}
-	return urls, nil
-}
-
 func (ilu *ImageLoaderUsecase) RemoveAdvertImages(imageUrls []string) error {
 	for _, url := range imageUrls {
 		err := ilu.imageLoaderRepo.Delete(url)
@@ -72,4 +66,16 @@ func (ilu *ImageLoaderUsecase) RemoveAdvertImages(imageUrls []string) error {
 		}
 	}
 	return nil
+}
+
+func (ilu *ImageLoaderUsecase) UploadAdvertImages(headerFiles []*multipart.FileHeader) ([]string, error) {
+	var urls []string
+	for _, file := range headerFiles {
+		url, err := ilu.Upload(file, imageloader.AdvertImageDirectory)
+		if err != nil {
+			return urls, err
+		}
+		urls = append(urls, url)
+	}
+	return urls, nil
 }

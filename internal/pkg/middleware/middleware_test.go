@@ -13,10 +13,11 @@ import (
 	sessMock "yula/internal/pkg/session/mocks"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMiddleware_CorsMiddleware_Succsess(t *testing.T) {
+func TestMiddleware_CorsMiddleware_Success(t *testing.T) {
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -34,7 +35,7 @@ func TestMiddleware_CorsMiddleware_Succsess(t *testing.T) {
 
 }
 
-func TestMiddleware_JsonMiddleware_Succsess(t *testing.T) {
+func TestMiddleware_JsonMiddleware_Success(t *testing.T) {
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -152,4 +153,26 @@ func TestMiddleware_CheckAuthorized_InvalidCookieValue(t *testing.T) {
 	assert.Equal(t, 401, Answer.Code)
 	assert.Equal(t, "no rights to access this resource", Answer.Message)
 
+}
+
+func TestLoggerInit(t *testing.T) {
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	mw := LoggerMiddleware(caller)
+	mw.ServeHTTP(w, r)
+}
+
+func TestCSRF(t *testing.T) {
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	mw := CSRFMiddleWare()
+	router := mux.NewRouter()
+	router.Use(mw)
+	caller(w, r)
 }

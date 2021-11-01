@@ -24,14 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var password string = "c0mplex"
-var testUser = &models.UserSignUp{
-	Email:    "tes5trtrgrwt4145@email.com",
-	Password: password,
-	Name:     "test",
-	Surname:  "surtest",
-}
-
 func TestSession_SignInHandler_Success(t *testing.T) {
 	su := sessMock.SessionUsecase{}
 	uu := userMock.UserUsecase{}

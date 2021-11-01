@@ -84,13 +84,13 @@ func (_m *CartUsecase) GetOrderFromCart(userId int64, advertId int64) (*models.C
 	return r0, r1
 }
 
-// MakeOrder provides a mock function with given fields: order, advert, salesman
-func (_m *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert, salesman *models.Profile) error {
-	ret := _m.Called(order, advert, salesman)
+// MakeOrder provides a mock function with given fields: order, advert
+func (_m *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert) error {
+	ret := _m.Called(order, advert)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*models.Cart, *models.Advert, *models.Profile) error); ok {
-		r0 = rf(order, advert, salesman)
+	if rf, ok := ret.Get(0).(func(*models.Cart, *models.Advert) error); ok {
+		r0 = rf(order, advert)
 	} else {
 		r0 = ret.Error(0)
 	}
