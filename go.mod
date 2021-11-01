@@ -13,8 +13,9 @@ require (
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/gorilla/csrf v1.7.1
+	github.com/jaswdr/faker v1.8.0
 	github.com/microcosm-cc/bluemonday v1.0.16
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/http-swagger v1.1.2
 	github.com/swaggo/swag v1.7.3
@@ -44,7 +45,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.8.1 // indirect
 	github.com/jackc/puddle v1.1.4 // indirect
-	github.com/jaswdr/faker v1.8.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect

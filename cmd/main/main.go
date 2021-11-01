@@ -97,10 +97,10 @@ func main() {
 	cu := cartUse.NewCartUsecase(cr)
 	catu := categoryUse.NewCategoryUsecase(catr)
 
-	ah := advtHttp.NewAdvertHandler(au, uu, logger)
+	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
-	ch := cartHttp.NewCartHandler(cu, uu, au, logger)
+	ch := cartHttp.NewCartHandler(cu, uu, au)
 	cath := categoryHttp.NewCategoryHandler(catu, logger)
 
 	sm := middleware.NewSessionMiddleware(su)
