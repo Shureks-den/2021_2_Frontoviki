@@ -2,6 +2,8 @@ package cart
 
 import "yula/internal/models"
 
+//go:generate mockery -name=CartRepository
+
 type CartRepository interface {
 	Select(userId int64, advertId int64) (*models.Cart, error)
 	Update(cart *models.Cart) error

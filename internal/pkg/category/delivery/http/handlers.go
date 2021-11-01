@@ -9,19 +9,22 @@ import (
 	"yula/internal/pkg/middleware"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type CategoryHandler struct {
 	categoryUsecase category.CategoryUsecase
-	logger          logging.Logger
 }
 
-func NewCategoryHandler(categoryUsecase category.CategoryUsecase, logger logging.Logger) *CategoryHandler {
+func NewCategoryHandler(categoryUsecase category.CategoryUsecase) *CategoryHandler {
 	return &CategoryHandler{
 		categoryUsecase: categoryUsecase,
-		logger:          logger,
 	}
 }
+
+var (
+	logger logging.Logger = logging.GetLogger()
+)
 
 func (ch *CategoryHandler) Routing(r *mux.Router) {
 	s := r.PathPrefix("/category").Subrouter()
@@ -38,6 +41,7 @@ func (ch *CategoryHandler) Routing(r *mux.Router) {
 // @failure default {object} models.HttpError
 // @Router /category [get]
 func (ch CategoryHandler) CategoriesListHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	categories, err := ch.categoryUsecase.GetCategories()
 	if err != nil {
 		w.WriteHeader(http.StatusOK)

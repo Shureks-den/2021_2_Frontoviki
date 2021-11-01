@@ -23,15 +23,7 @@ func NewAdvtUsecase(advtRepository advt.AdvtRepository, imageLoaderUsecase image
 
 func (au *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error) {
 	advts, err := au.advtRepository.SelectListAdvt(newest, from, count)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(advts) == 0 {
-		return []*models.Advert{}, nil
-	}
-
-	return advts, nil
+	return advts, err
 }
 
 func (au *AdvtUsecase) CreateAdvert(userId int64, advert *models.Advert) error {
@@ -40,25 +32,19 @@ func (au *AdvtUsecase) CreateAdvert(userId int64, advert *models.Advert) error {
 		advert.Amount = 1
 	}
 	err := au.advtRepository.Insert(advert)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (au *AdvtUsecase) GetAdvert(advertId int64) (*models.Advert, error) {
 	advert, err := au.advtRepository.SelectById(advertId)
-	if err != nil {
-		return nil, err
-	}
 
-	if len(advert.Images) == 0 {
+	if err == nil && len(advert.Images) == 0 {
 		advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
 	}
 
 	// инкрементировать просмотр каждый раз когда кто-то смотрит ???
 
-	return advert, nil
+	return advert, err
 }
 
 func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) error {
@@ -94,11 +80,7 @@ func (au *AdvtUsecase) DeleteAdvert(advertId int64, userId int64) error {
 	}
 
 	err = au.advtRepository.Delete(advertId)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (au *AdvtUsecase) CloseAdvert(advertId int64, userId int64) error {
@@ -115,11 +97,7 @@ func (au *AdvtUsecase) CloseAdvert(advertId int64, userId int64) error {
 	advert.DateClose = time.Now()
 
 	err = au.advtRepository.Update(advert)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int64, userId int64) (*models.Advert, error) {
@@ -154,15 +132,7 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 
 func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error) {
 	adverts, err := au.advtRepository.SelectAdvertsByPublisherId(publisherId, is_active, page.PageNum, page.Count)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(adverts) == 0 {
-		return []*models.Advert{}, nil
-	}
-
-	return adverts, nil
+	return adverts, err
 }
 
 func (au *AdvtUsecase) AdvertsToShort(adverts []*models.Advert) []*models.AdvertShort {

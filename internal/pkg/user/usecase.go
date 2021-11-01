@@ -5,6 +5,8 @@ import (
 	"yula/internal/models"
 )
 
+//go:generate mockery -name=UserUsecase
+
 // определяем интерфейс связи между deliver и repository
 type UserUsecase interface {
 	Create(user *models.UserSignUp) (*models.UserData, error)

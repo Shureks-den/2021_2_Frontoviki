@@ -1,347 +1,289 @@
 package usecase
 
-/*
 import (
-	"fmt"
-	"math/rand"
-	"os"
-	"strings"
+	"mime/multipart"
 	"testing"
-	"time"
-	"yula/internal/codes"
-	"yula/internal/config"
-	"yula/internal/database"
 	"yula/internal/models"
 
-	userRep "yula/internal/pkg/user/repository"
+	myerr "yula/internal/error"
+	"yula/internal/pkg/user/mocks"
 
-	"github.com/joho/godotenv"
+	imageloader "yula/internal/pkg/image_loader"
+
+	imageloaderMocks "yula/internal/pkg/image_loader/mocks"
+
+	imageloaderRepo "yula/internal/pkg/image_loader/repository"
+	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ilr imageloader.ImageLoaderRepository = imageloaderRepo.NewImageLoaderRepository()
+	ilu imageloader.ImageLoaderUsecase    = imageloaderUse.NewImageLoaderUsecase(ilr)
 )
 
 func TestCreate(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
+
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
 
 	createdUser, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
+	assert.Nil(t, error)
 
 	assert.Equal(t, reqUser.Email, createdUser.Email)
-}
-
-func TestTwiceCreate(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
-
-	reqUser := models.UserSignUp{
-		Username: "username",
-		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
-	}
-
-	_, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
-	_, error = uu.Create(&reqUser)
-
-	assert.Equal(t, error, codes.StatusMap[codes.UserAlreadyExist])
+	assert.NotEqual(t, reqUser.Password, createdUser.Password)
 }
 
 func TestGetByEmail(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	created_user, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
-	user, error := uu.GetByEmail(created_user.Email)
-	if error != nil {
-		t.Fatalf(error.Message)
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
+
+	createdUser, error := uu.Create(&reqUser)
+	assert.Nil(t, error)
+
+	ur.On("SelectByEmail", reqUser.Email).Return(createdUser, nil)
+	user, error := uu.GetByEmail(createdUser.Email)
+	assert.Nil(t, error)
+
+	assert.Equal(t, user.Email, createdUser.Email)
+}
+
+func TestTwiceCreate(t *testing.T) {
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
+
+	reqUser := models.UserSignUp{
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	assert.Equal(t, user.Email, created_user.Email)
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
+
+	createdUser, error := uu.Create(&reqUser)
+	assert.Nil(t, error)
+
+	ur.On("SelectByEmail", reqUser.Email).Return(createdUser, nil)
+	usr, error := uu.Create(&reqUser)
+
+	assert.Equal(t, error, myerr.AlreadyExist)
+	assert.Nil(t, usr)
 }
 
 func TestGetByEmailUserNotExist(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery)
+
 	_, error := uu.GetByEmail(reqUser.Email)
-	assert.Equal(t, error, codes.StatusMap[codes.UserNotExist])
+	assert.Equal(t, error, myerr.NotExist)
 }
 
 func TestCheckPassword(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	created_user, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
 
-	var srverr *codes.ServerError = nil
-	error = uu.CheckPassword(created_user, reqUser.Password)
-	assert.Equal(t, error, srverr)
+	createdUser, error := uu.Create(&reqUser)
+	assert.Nil(t, error)
+
+	error = uu.CheckPassword(createdUser, reqUser.Password)
+	assert.Equal(t, error, nil)
 }
 
 func TestCheckPasswordInvalid(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	created_user, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
 
-	error = uu.CheckPassword(created_user, reqUser.Password+"0104")
-	assert.Equal(t, error, codes.StatusMap[codes.Unauthorized])
+	createdUser, error := uu.Create(&reqUser)
+	assert.Nil(t, error)
+
+	error = uu.CheckPassword(createdUser, reqUser.Password+"aboba")
+	assert.Equal(t, error, myerr.PasswordMismatch)
 }
 
 func TestGetById(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
-
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
 	reqUser := models.UserSignUp{
-		Username: "username",
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
 	}
 
-	created_user, error := uu.Create(&reqUser)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
-	user, error := uu.GetById(created_user.Id)
-	if error != nil {
-		t.Fatalf(error.Message)
-	}
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
+	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
 
-	assert.Equal(t, user.Email, created_user.Email)
+	createdUser, error := uu.Create(&reqUser)
+	assert.Nil(t, error)
+
+	ur.On("SelectById", createdUser.Id).Return(createdUser, nil)
+	user, error := uu.GetById(createdUser.Id)
+	assert.Nil(t, error)
+
+	assert.Equal(t, user, createdUser.ToProfile())
 }
 
 func TestGetByIdUserNotExist(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
+	ur.On("SelectById", mock.MatchedBy(func(userId int64) bool { return userId < 0 })).Return(nil, myerr.EmptyQuery)
 
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		t.Fatal("Connection not opened")
-	}
-	defer postgres.Close()
+	_, error := uu.GetById(-1)
+	assert.Equal(t, error, myerr.NotExist)
+}
 
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
-	uu := NewUserUsecase(ur)
+func TestUpdateUserProfile(t *testing.T) {
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
-	reqUser := models.UserSignUp{
-		Username: "username",
+	reqUser := models.UserData{
+		Id:       0,
 		Password: "password",
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
 	}
 
-	_, error := uu.GetById(reqUser.Id)
-	assert.Equal(t, error, codes.StatusMap[codes.UserNotExist])
-}*/
+	ur.On("SelectById", reqUser.Id).Return(&reqUser, nil)
+	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.NotExist)
+	ur.On("Update", &reqUser).Return(nil)
 
-// func TestUpdateUserProfile(t *testing.T) {
-// 	// loads values from .env into the system
-// 	pwd, err := os.Getwd()
-// 	folders := strings.Split(pwd, "/")
-// 	pwd = strings.Join(folders[:len(folders)-4], "/")
-// 	fmt.Println(pwd, err)
+	newProfile, error := uu.UpdateProfile(reqUser.Id, &reqUser)
+	assert.Nil(t, error)
 
-// 	if err := godotenv.Load(pwd + "/.env"); err != nil {
-// 		t.Fatal("No .env file found")
-// 	}
+	assert.Equal(t, newProfile, reqUser.ToProfile())
+}
 
-// 	cnfg := config.NewConfig()
-// 	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-// 	if err != nil {
-// 		t.Fatal("Connection not opened")
-// 	}
-// 	defer postgres.Close()
+func TestUpdateUserAlreadyExist(t *testing.T) {
+	ur := mocks.UserRepository{}
+	uu := NewUserUsecase(&ur, ilu)
 
-// 	ur := userRep.NewUserRepository(postgres.GetDbPool())
-// 	uu := NewUserUsecase(ur)
+	userActual := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+	}
 
-// 	reqUser := models.UserSignUp{
-// 		Username: "username",
-// 		Password: "password",
-// 		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TEST.ru",
-// 	}
+	userNew := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "aaaaa@shibanov.jp",
+		Name:     "baobab",
+	}
 
-// 	createdUser, error := uu.Create(&reqUser)
-// 	if error != nil {
-// 		t.Fatalf(error.Message)
-// 	}
+	userOther := models.UserData{
+		Id:       150,
+		Password: "kabalfmbfal",
+		Email:    "aaaaa@shibanov.jp",
+		Name:     "kgrmwgwmgklwg",
+	}
 
-// 	createdUser.Password = "wrmkgwprg"
-// 	error = uu.UpdateProfile(createdUser.Id, createdUser)
-// 	if error != nil {
-// 		t.Fatalf(error.Message)
-// 	}
+	ur.On("SelectById", userNew.Id).Return(&userActual, nil)
+	ur.On("SelectByEmail", userNew.Email).Return(&userOther, nil)
 
-// 	var srverr *codes.ServerError = nil
-// 	error = uu.CheckPassword(createdUser, "wrmkgwprg")
-// 	assert.Equal(t, error, srverr)
-// }
+	newProfile, error := uu.UpdateProfile(userNew.Id, &userNew)
+	assert.Equal(t, error, myerr.AlreadyExist)
+
+	assert.Nil(t, newProfile)
+}
+
+func TestUploadAvatarSuccess(t *testing.T) {
+	ur := mocks.UserRepository{}
+	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
+	uu := NewUserUsecase(&ur, &mockedILU)
+
+	user := models.UserData{
+		Id:       0,
+		Password: "password",
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+		Image:    "not default",
+	}
+
+	file := multipart.FileHeader{
+		Filename: "aboba.txt",
+		Size:     0,
+	}
+
+	ur.On("SelectById", user.Id).Return(&user, nil)
+	mockedILU.On("UploadAvatar", &file).Return("/home/aboba/"+file.Filename, nil)
+	mockedILU.On("RemoveAvatar", user.Image).Return(nil)
+	ur.On("Update", &user).Return(nil)
+
+	newUser, error := uu.UploadAvatar(&file, user.Id)
+	assert.Equal(t, newUser.Image, "/home/aboba/"+file.Filename)
+
+	assert.Nil(t, error)
+}
+
+func TestUpdatePasswordSuccess(t *testing.T) {
+	ur := mocks.UserRepository{}
+	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
+	uu := NewUserUsecase(&ur, &mockedILU)
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+
+	user := models.UserData{
+		Id:       0,
+		Password: string(passwordHash),
+		Email:    "superchel@shibanov.jp",
+		Name:     "aboba",
+		Image:    "not default",
+	}
+
+	assert.Nil(t, err)
+
+	cp := models.ChangePassword{
+		Email:       user.Email,
+		Password:    "password",
+		NewPassword: "newpassword",
+	}
+
+	ur.On("SelectById", user.Id).Return(&user, nil)
+	ur.On("Update", &user).Return(nil)
+
+	error := uu.UpdatePassword(user.Id, &cp)
+	assert.Nil(t, error)
+}

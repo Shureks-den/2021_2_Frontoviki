@@ -88,19 +88,20 @@ func (cu *CartUsecase) UpdateAllCart(userId int64, cart []*models.CartHandler,
 	messages := make([]string, 0)
 	for i := range cart {
 		el, err := cu.UpdateCart(userId, cart[i], adverts[i].Amount)
-		if !(err == nil || strings.Contains(err.Error(), "not enough copies.")) {
+		if err != nil && !strings.Contains(err.Error(), "not enough copies") {
 			return nil, nil, nil, err
 		}
 
 		if el != nil {
 			newCart = append(newCart, el)
 			newAdvert = append(newAdvert, adverts[i])
-			if err == nil {
-				messages = append(messages, "ok")
-			} else if strings.Contains(err.Error(), "not enough copies.") {
-				_, msg := internalError.ToMetaStatus(err)
-				messages = append(messages, msg)
+			var msg string
+			if err != nil {
+				_, msg = internalError.ToMetaStatus(err)
+			} else {
+				msg = "ok"
 			}
+			messages = append(messages, msg)
 		}
 	}
 	return newCart, newAdvert, messages, nil
@@ -108,13 +109,13 @@ func (cu *CartUsecase) UpdateAllCart(userId int64, cart []*models.CartHandler,
 
 func (cu *CartUsecase) ClearAllCart(userId int64) error {
 	err := cu.cartRepository.DeleteAll(userId)
-	if !(err == nil || err == internalError.EmptyQuery) {
-		return err
+	if err == internalError.EmptyQuery {
+		return nil
 	}
-	return nil
+	return err
 }
 
-func (cu *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert, salesman *models.Profile) error {
+func (cu *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert) error {
 	if order.Amount == 0 || order.Amount > advert.Amount {
 		return internalError.InvalidQuery
 	}
@@ -126,9 +127,5 @@ func (cu *CartUsecase) MakeOrder(order *models.Cart, advert *models.Advert, sale
 	}
 
 	err := cu.cartRepository.Delete(order)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
