@@ -136,7 +136,7 @@ func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, is_active b
 }
 
 func (au *AdvtUsecase) AdvertsToShort(adverts []*models.Advert) []*models.AdvertShort {
-	advertsShort := []*models.AdvertShort{}
+	advertsShort := make([]*models.AdvertShort, 0, len(adverts))
 	for _, advert := range adverts {
 		advertsShort = append(advertsShort, advert.ToShort())
 	}

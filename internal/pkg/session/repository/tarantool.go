@@ -58,7 +58,7 @@ func (sr *SessionRepository) Set(sess *models.Session) error {
 	sr.m.Unlock()
 
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	return nil
@@ -72,7 +72,7 @@ func (sr *SessionRepository) Delete(sess *models.Session) error {
 	sr.m.Unlock()
 
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	return nil
@@ -96,20 +96,8 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	}
 
 	if err != nil {
-		return nil, internalError.DatabaseError
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &sess, nil
 }
-
-// func main() {
-// 	tar := NewSessionRepository(nil)
-// 	sess := models.Session{
-// 		Value:     "13441",
-// 		UserId:    134134,
-// 		ExpiresAt: time.Now().Add(1000 * time.Second),
-// 	}
-// 	tar.Set(&sess)
-// 	selsess, _ := tar.GetByValue(sess.Value)
-// 	fmt.Println(selsess.UserId)
-// }

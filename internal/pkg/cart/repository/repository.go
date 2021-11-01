@@ -31,7 +31,7 @@ func (cr *CartRepository) Select(userId int64, advertId int64) (*models.Cart, er
 			return nil, internalError.EmptyQuery
 
 		default:
-			return nil, internalError.InternalError
+			return nil, internalError.GenInternalError(err)
 		}
 	}
 	return &oneInCart, nil
@@ -41,7 +41,7 @@ func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 	queryStr := "SELECT user_id, advert_id, amount FROM cart WHERE user_id = $1;"
 	query, err := cr.pool.Query(context.Background(), queryStr, userId)
 	if err != nil {
-		return nil, internalError.InternalError
+		internalError.GenInternalError(err)
 	}
 
 	defer query.Close()
@@ -51,7 +51,7 @@ func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 
 		err = query.Scan(&oneInCart.UserId, &oneInCart.AdvertId, &oneInCart.Amount)
 		if err != nil {
-			return nil, internalError.InternalError
+			internalError.GenInternalError(err)
 		}
 
 		cart = append(cart, &oneInCart)
@@ -63,7 +63,7 @@ func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 func (cr *CartRepository) Update(cart *models.Cart) error {
 	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		return internalError.GenInternalError(err)
 	}
 
 	queryStr := "UPDATE cart SET amount = $3 WHERE user_id = $1 AND advert_id = $2;"
@@ -74,7 +74,7 @@ func (cr *CartRepository) Update(cart *models.Cart) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -88,7 +88,7 @@ func (cr *CartRepository) Update(cart *models.Cart) error {
 func (cr *CartRepository) Insert(cart *models.Cart) error {
 	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		internalError.GenInternalError(err)
 	}
 
 	queryStr := "INSERT INTO cart (user_id, advert_id, amount) VALUES ($1, $2, $3);"
@@ -99,7 +99,7 @@ func (cr *CartRepository) Insert(cart *models.Cart) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -113,7 +113,7 @@ func (cr *CartRepository) Insert(cart *models.Cart) error {
 func (cr *CartRepository) Delete(cart *models.Cart) error {
 	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		internalError.GenInternalError(err)
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1 AND advert_id = $2;"
@@ -124,7 +124,7 @@ func (cr *CartRepository) Delete(cart *models.Cart) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -138,7 +138,7 @@ func (cr *CartRepository) Delete(cart *models.Cart) error {
 func (cr *CartRepository) DeleteAll(userId int64) error {
 	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.InternalError
+		internalError.GenInternalError(err)
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1;"
@@ -149,7 +149,7 @@ func (cr *CartRepository) DeleteAll(userId int64) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())

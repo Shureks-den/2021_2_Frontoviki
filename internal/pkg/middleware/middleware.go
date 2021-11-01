@@ -141,7 +141,7 @@ func CSRFMiddleWare() func(http.Handler) http.Handler {
 	space := uuid.New()
 	sha := uuid.NewSHA1(space, []byte("csrf token"))
 	md := uuid.NewMD5(space, []byte("csrf token"))
-	token := sha.String() + "-" + md.String()
+	token := fmt.Sprintf("%s-%s", sha.String(), md.String())
 
 	return csrf.Protect(
 		[]byte(token),

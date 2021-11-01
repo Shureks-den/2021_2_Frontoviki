@@ -42,7 +42,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 
 	rows, err := ar.pool.Query(context.Background(), queryStr, count, from*count)
 	if err != nil {
-		return nil, internalError.DatabaseError
+		return nil, internalError.GenInternalError(err)
 	}
 	defer rows.Close()
 
@@ -55,7 +55,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
 			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 		if err != nil {
-			return nil, internalError.DatabaseError
+			return nil, internalError.GenInternalError(err)
 		}
 
 		advert.Images = []string{}
@@ -78,7 +78,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount, is_new) 
@@ -93,7 +93,7 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -141,7 +141,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE c.name = $4), 
@@ -156,7 +156,7 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 		if rlbckEr := tx.Rollback(context.Background()); rlbckEr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -169,7 +169,7 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 func (ar *AdvtRepository) Delete(advertId int64) error {
 	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	_, err = tx.Exec(context.Background(), "DELETE FROM advert WHERE id = $1;", advertId)
@@ -177,7 +177,7 @@ func (ar *AdvtRepository) Delete(advertId int64) error {
 		if rlbckEr := tx.Rollback(context.Background()); rlbckEr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	err = tx.Commit(context.Background())
@@ -191,7 +191,7 @@ func (ar *AdvtRepository) Delete(advertId int64) error {
 func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	// сначала очищаем все картинки у объявления
@@ -203,7 +203,7 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
-		return internalError.DatabaseError
+		return internalError.GenInternalError(err)
 	}
 
 	// вставляем в базу новые url картинок
@@ -216,7 +216,7 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 			if rollbackErr != nil {
 				return internalError.RollbackError
 			}
-			return internalError.DatabaseError
+			return internalError.GenInternalError(err)
 		}
 	}
 
@@ -255,7 +255,7 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 
 	rows, err := ar.pool.Query(context.Background(), queryStr, publisherId, limit, offset*limit)
 	if err != nil {
-		return nil, internalError.DatabaseError
+		return nil, internalError.GenInternalError(err)
 	}
 	defer rows.Close()
 
@@ -269,7 +269,7 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
-			return nil, internalError.DatabaseError
+			return nil, internalError.GenInternalError(err)
 		}
 
 		advert.Images = []string{}
@@ -320,7 +320,7 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
-			return nil, internalError.DatabaseError
+			return nil, internalError.GenInternalError(err)
 		}
 
 		advert.Images = []string{}
