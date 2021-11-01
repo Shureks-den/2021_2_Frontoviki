@@ -5,6 +5,8 @@ import (
 	"yula/internal/models"
 )
 
+//go:generate mockery -name=AdvtUsecase
+
 type AdvtUsecase interface {
 	GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error)
 	GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error)

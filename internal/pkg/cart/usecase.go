@@ -15,5 +15,5 @@ type CartUsecase interface {
 		adverts []*models.Advert) ([]*models.Cart, []*models.Advert, []string, error)
 	ClearAllCart(userId int64) error
 
-	MakeOrder(order *models.Cart, advert *models.Advert, salesman *models.Profile) error
+	MakeOrder(order *models.Cart, advert *models.Advert) error
 }

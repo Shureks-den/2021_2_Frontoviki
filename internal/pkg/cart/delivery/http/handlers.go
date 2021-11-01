@@ -116,7 +116,15 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 // @failure default {object} models.HttpError
 // @Router /cart [post]
 func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+=======
+<<<<<<< HEAD
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+=======
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+>>>>>>> a11de8d... tests refactored.
+>>>>>>> 4e921fe... tests refactored.
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -181,7 +189,15 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 // @failure default {object} models.HttpError
 // @Router /cart [get]
 func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+=======
+<<<<<<< HEAD
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+=======
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+>>>>>>> a11de8d... tests refactored.
+>>>>>>> 4e921fe... tests refactored.
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -225,7 +241,15 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 // @failure default {object} models.HttpError
 // @Router /cart/clear [post]
 func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+=======
+<<<<<<< HEAD
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+=======
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+>>>>>>> a11de8d... tests refactored.
+>>>>>>> 4e921fe... tests refactored.
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
@@ -255,7 +279,15 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 // @failure default {object} models.HttpError
 // @Router /cart/{id}/checkout [post]
 func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+=======
+<<<<<<< HEAD
+	ch.logger = ch.logger.GetLoggerWithFields((r.Context().Value("logger fields")).(logrus.Fields))
+=======
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+>>>>>>> a11de8d... tests refactored.
+>>>>>>> 4e921fe... tests refactored.
 	var userId int64
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)

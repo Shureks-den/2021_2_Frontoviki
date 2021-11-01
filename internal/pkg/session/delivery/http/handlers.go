@@ -48,7 +48,7 @@ var (
 // @failure default {object} models.HttpError
 // @Router /signin [post]
 func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) {
-	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var signInUser models.UserSignIn
 
 	defer r.Body.Close()
@@ -129,7 +129,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 // @failure default {object} models.HttpError
 // @Router /logout [post]
 func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) {
-	sh.logger = sh.logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	session, err := r.Cookie("session_id")
 	if err != nil {
 		logger.Warnf("unauthorized: %s", err.Error())

@@ -133,7 +133,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 // @failure default {object} models.HttpError
 // @Router /users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
-	var userId int64
+	var userId int64 = -1
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	if r.Context().Value(middleware.ContextUserId) != nil {
 		userId = r.Context().Value(middleware.ContextUserId).(int64)

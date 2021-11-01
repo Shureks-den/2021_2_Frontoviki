@@ -141,7 +141,7 @@ func (uu *UserUsecase) UploadAvatar(file *multipart.FileHeader, userId int64) (*
 	}
 
 	oldAvatar := user.Image
-	if !(oldAvatar == "" || oldAvatar == imageloader.DefaultAvatar) {
+	if oldAvatar != "" && oldAvatar != imageloader.DefaultAvatar {
 		err = uu.imageLoaderUse.RemoveAvatar(oldAvatar)
 		if err != nil {
 			return nil, err
@@ -175,9 +175,5 @@ func (uu *UserUsecase) UpdatePassword(userId int64, changePassword *models.Chang
 
 	user.Password = string(passwordHash)
 	err = uu.userRepo.Update(user)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
