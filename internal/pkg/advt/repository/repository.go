@@ -109,7 +109,6 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
 				JOIN category c ON a.category_id = c.Id
 				LEFT JOIN advert_image ai ON a.id = ai.advert_id 
-				WHERE a.is_active 
 				GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name
 				HAVING a.id = $1;`
