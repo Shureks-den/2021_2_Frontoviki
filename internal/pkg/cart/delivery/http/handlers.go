@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	internalError "yula/internal/error"
@@ -196,17 +195,13 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	archived_advert := make([]int64, 0)
 	adverts := make([]*models.Advert, 0)
 	for _, e := range cart {
 		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId)
 		if err == internalError.EmptyQuery {
-			logger.Warnf("adverts move to archive")
-			w.WriteHeader(http.StatusOK)
-			w.Write(models.ToBytes(http.StatusConflict, fmt.Sprintf("advert %d move to archive", e.AdvertId), nil))
-			return
-		}
-
-		if err != nil {
+			archived_advert = append(archived_advert, e.AdvertId)
+		} else if err != nil {
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -215,6 +210,18 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		adverts = append(adverts, advert)
+	}
+
+	if len(archived_advert) != 0 {
+		s := ""
+		for _, i := range archived_advert {
+			s += strconv.FormatInt(i, 10) + " "
+		}
+
+		logger.Warnf("cart contain archived advert")
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusConflict, "cart contain archived advert: "+s, nil))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
