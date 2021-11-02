@@ -113,6 +113,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
+		Secure:   true,
 	})
 
 	w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа

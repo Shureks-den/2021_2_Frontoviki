@@ -112,6 +112,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
+		Secure:   true,
 	})
 
 	w.WriteHeader(http.StatusOK)

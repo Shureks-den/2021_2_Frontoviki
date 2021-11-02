@@ -142,7 +142,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	adverts := []*models.Advert{}
+	adverts := make([]*models.Advert, 0, len(cartInputed))
 	for _, element := range cartInputed {
 		advert, err := ch.advertUsecase.GetAdvert(element.AdvertId)
 		if err != nil {
@@ -320,16 +320,6 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
-
-	/*
-		err = ch.advertUsecase.CloseAdvert(advertId, advert.PublisherId)
-		if err != nil {
-			ch.logger.Warnf("can not update advert: %s", err.Error())
-			w.WriteHeader(http.StatusOK)
-			metaCode, metaMessage := internalError.ToMetaStatus(err)
-			w.Write(models.ToBytes(metaCode, metaMessage, nil))
-			return
-		}*/
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyOrder{Salesman: *salesman, Order: *order}
