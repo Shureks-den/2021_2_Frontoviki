@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 	"yula/internal/config"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/session"
 
@@ -21,9 +22,6 @@ type SessionRepository struct {
 func NewSessionRepository(cfg *config.TarantoolConfig) session.SessionRepository {
 	opts := tarantool.Opts{User: cfg.TarantoolOpts.User, Pass: cfg.TarantoolOpts.Pass}
 	conn, err := tarantool.Connect(cfg.TarantoolServerAddress, opts)
-
-	// opts := tarantool.Opts{User: "admin", Pass: "pass"}
-	// conn, err := tarantool.Connect("localhost:3301", opts)
 
 	if err != nil {
 		log.Fatalf("Connection refused")
@@ -43,9 +41,6 @@ func (sr *SessionRepository) AddNewConnectionToPool(cfg *config.TarantoolConfig)
 	opts := tarantool.Opts{User: cfg.TarantoolOpts.User, Pass: cfg.TarantoolOpts.Pass}
 	conn, err := tarantool.Connect(cfg.TarantoolServerAddress, opts)
 
-	// opts := tarantool.Opts{User: "admin", Pass: "pass"}
-	// conn, err := tarantool.Connect("localhost:3301", opts)
-
 	if err != nil {
 		return errors.New("connect error")
 	}
@@ -63,7 +58,7 @@ func (sr *SessionRepository) Set(sess *models.Session) error {
 	sr.m.Unlock()
 
 	if err != nil {
-		return errors.New("insert error")
+		return internalError.GenInternalError(err)
 	}
 
 	return nil
@@ -77,7 +72,7 @@ func (sr *SessionRepository) Delete(sess *models.Session) error {
 	sr.m.Unlock()
 
 	if err != nil {
-		return errors.New("delete error")
+		return internalError.GenInternalError(err)
 	}
 
 	return nil
@@ -91,7 +86,7 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	sr.m.RUnlock()
 
 	if len(resp.Data) == 0 {
-		return nil, errors.New("empty_row")
+		return nil, internalError.EmptyQuery
 	}
 
 	sess := models.Session{
@@ -101,20 +96,8 @@ func (sr *SessionRepository) GetByValue(value string) (*models.Session, error) {
 	}
 
 	if err != nil {
-		return nil, errors.New("select error")
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &sess, nil
 }
-
-// func main() {
-// 	tar := NewSessionRepository(nil)
-// 	sess := models.Session{
-// 		Value:     "13441",
-// 		UserId:    134134,
-// 		ExpiresAt: time.Now().Add(1000 * time.Second),
-// 	}
-// 	tar.Set(&sess)
-// 	selsess, _ := tar.GetByValue(sess.Value)
-// 	fmt.Println(selsess.UserId)
-// }

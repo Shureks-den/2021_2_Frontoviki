@@ -4,19 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"strings"
 	"testing"
-	"yula/internal/config"
+	"time"
 	"yula/internal/models"
-	sessRep "yula/internal/pkg/session/repository"
-	sessUse "yula/internal/pkg/session/usecase"
 
-	"github.com/joho/godotenv"
+	myerr "yula/internal/error"
+
+	sessMock "yula/internal/pkg/session/mocks"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMiddleware_CorsMiddleware_Succsess(t *testing.T) {
+func TestMiddleware_CorsMiddleware_Success(t *testing.T) {
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -30,11 +31,11 @@ func TestMiddleware_CorsMiddleware_Succsess(t *testing.T) {
 	assert.Equal(t, string("Accept, Content-Type, Content-Length, Accept-Encoding, Authorization, X-CSRF-Token, Location"),
 		w.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, string("POST, GET, OPTIONS, PUT, DELETE"), w.Header().Get("Access-Control-Allow-Methods"))
-	assert.Equal(t, string("https://volchok.netlify.app"), w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, string("https://volchock.ru"), w.Header().Get("Access-Control-Allow-Origin"))
 
 }
 
-func TestMiddleware_JsonMiddleware_Succsess(t *testing.T) {
+func TestMiddleware_JsonMiddleware_Success(t *testing.T) {
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -42,7 +43,7 @@ func TestMiddleware_JsonMiddleware_Succsess(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	caller(w, r)
-	mw := JsonMiddleware(caller)
+	mw := ContentTypeMiddleware(caller)
 	mw.ServeHTTP(w, r)
 
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
@@ -56,33 +57,20 @@ func TestMiddleware_JsonMiddleware_NoApplicationJson(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	caller(w, r)
-	mw := JsonMiddleware(caller)
+	mw := ContentTypeMiddleware(caller)
 	mw.ServeHTTP(w, r)
 
-	assert.Equal(t, string(""), w.Header().Get("Content-Type"))
+	assert.Equal(t, string("application/json"), w.Header().Get("Content-Type"))
 
 }
 
 func TestMiddleware_CheckAuthorized_Success(t *testing.T) {
-	pwd, _ := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-3], "/")
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-
-	mw := NewSessionMiddleware(su)
-
-	userSession, err := su.Create(0)
-	assert.Equal(t, true, err == nil)
-
+	su := sessMock.SessionUsecase{}
+	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
+
+	su.On("Check", userSession.Value).Return(&userSession, nil)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -94,41 +82,25 @@ func TestMiddleware_CheckAuthorized_Success(t *testing.T) {
 		Path:     "/",
 	})
 	r := &http.Request{Header: http.Header{"Cookie": []string{w.Header().Get("Set-Cookie")}}}
-	// r := &http.Request{Header: http.Header{"Cookie": w.HeaderMap["Set-Cookie"]}}
 
 	caller(w, r)
 	mw.CheckAuthorized(caller).ServeHTTP(w, r)
 
 	cookie, err := r.Cookie("session_id")
-	assert.Equal(t, nil, err)
+	assert.Nil(t, err)
 	session, err := su.Check(cookie.Value)
-	assert.Equal(t, nil, err)
+	assert.Nil(t, err)
 
 	assert.Equal(t, int64(0), session.UserId)
-
-	su.Delete(session.Value)
 }
 
-func TestMiddleware_CheckAuthorized_InvalodCookieName(t *testing.T) {
-	pwd, _ := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-3], "/")
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-
-	mw := NewSessionMiddleware(su)
-
-	userSession, err := su.Create(0)
-	assert.Equal(t, true, err == nil)
-
+func TestMiddleware_CheckAuthorized_InvalidCookieName(t *testing.T) {
+	su := sessMock.SessionUsecase{}
+	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
+
+	su.On("Check", userSession.Value).Return(&userSession, nil)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -144,31 +116,17 @@ func TestMiddleware_CheckAuthorized_InvalodCookieName(t *testing.T) {
 	caller(w, r)
 	mw.CheckAuthorized(caller).ServeHTTP(w, r)
 
-	_, err = r.Cookie("session_id")
+	_, err := r.Cookie("session_id")
 	assert.Equal(t, "http: named cookie not present", err.Error())
-	su.Delete(userSession.Value)
 }
 
-func TestMiddleware_CheckAuthorized_InvalodCookieValue(t *testing.T) {
-	pwd, _ := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-3], "/")
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	cnfg := config.NewConfig()
-
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	su := sessUse.NewSessionUsecase(sr)
-
-	mw := NewSessionMiddleware(su)
-
-	userSession, err := su.Create(0)
-	assert.Equal(t, true, err == nil)
-
+func TestMiddleware_CheckAuthorized_InvalidCookieValue(t *testing.T) {
+	su := sessMock.SessionUsecase{}
+	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
+
+	su.On("Check", "wrong_value").Return(nil, myerr.NotExist)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -184,18 +142,37 @@ func TestMiddleware_CheckAuthorized_InvalodCookieValue(t *testing.T) {
 	caller(w, r)
 	mw.CheckAuthorized(caller).ServeHTTP(w, r)
 
-	_, err = r.Cookie("session_id")
-	assert.Equal(t, nil, err)
+	_, err := r.Cookie("session_id")
+	assert.Nil(t, err)
 
 	var Answer models.HttpError
 	err = json.NewDecoder(w.Body).Decode(&Answer)
-	if err != nil {
-		t.Fatal("invalid serialization")
-	}
+	assert.Nil(t, err)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, 401, Answer.Code)
 	assert.Equal(t, "no rights to access this resource", Answer.Message)
 
-	su.Delete(userSession.Value)
+}
+
+func TestLoggerInit(t *testing.T) {
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	mw := LoggerMiddleware(caller)
+	mw.ServeHTTP(w, r)
+}
+
+func TestCSRF(t *testing.T) {
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	mw := CSRFMiddleWare()
+	router := mux.NewRouter()
+	router.Use(mw)
+	caller(w, r)
 }

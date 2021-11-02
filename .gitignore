@@ -12,6 +12,7 @@
 
 # Output
 *.out
+internal/pkg/cover
 
 # VS Code
 .vscode/*
@@ -31,3 +32,15 @@
 # Tarantool logs
 *.snap
 *.xlog
+
+# images
+static/avatars/*
+!static/avatars/default_avatar.png
+static/advertimages/*
+!static/advertimages/default_image.png
+
+# ignore swagger docs
+docs
+
+# ignore logs
+logs

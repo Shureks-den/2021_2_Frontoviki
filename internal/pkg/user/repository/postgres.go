@@ -2,95 +2,115 @@ package repository
 
 import (
 	"context"
-	"log"
-	"sync"
-	"yula/internal/codes"
+	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type UserRepository struct {
 	pool *pgxpool.Pool
-	m    sync.RWMutex
 }
 
 func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
 	return &UserRepository{
 		pool: pool,
-		m:    sync.RWMutex{},
 	}
 }
 
-func (ur *UserRepository) Insert(user *models.UserData) *codes.DatabaseError {
-	ur.m.Lock()
-	row := ur.pool.QueryRow(context.Background(),
-		"INSERT INTO users (username, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id;",
-		user.Username, user.Email, user.Password, user.CreatedAt)
-	ur.m.Unlock()
+func (ur *UserRepository) Insert(user *models.UserData) error {
+	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	row := tx.QueryRow(context.Background(),
+		"INSERT INTO users (email, password, created_at, name, surname, image) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;",
+		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname, user.Image)
 
 	var id int64
-	if err := row.Scan(&id); err != nil {
+	err = row.Scan(&id)
 
-		log.Println("unable to insert", err.Error())
-		return codes.NewDatabaseError(codes.UnexpectedDbError)
+	if err != nil {
+		rollbackErr := tx.Rollback(context.Background())
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
 	}
 
 	user.Id = id
 	return nil
 }
 
-func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, *codes.DatabaseError) {
-	ur.m.RLock()
+func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE email = $1", email)
-	ur.m.RUnlock()
+		"SELECT id, email, password, created_at, name, surname, image, rating FROM users WHERE email = $1", email)
 
 	user := models.UserData{}
-	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
-		&user.Name, &user.Surname, &user.Image); err != nil {
+	if err := row.Scan(&user.Id, &user.Email, &user.Password, &user.CreatedAt,
+		&user.Name, &user.Surname, &user.Image, &user.Rating); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
-			return nil, codes.NewDatabaseError(codes.EmptyRow)
+			return nil, internalError.EmptyQuery
 		}
-		return nil, codes.NewDatabaseError(codes.UnexpectedDbError)
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) SelectById(userId int64) (*models.UserData, *codes.DatabaseError) {
-	ur.m.RLock()
+func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, username, email, password, created_at, name, surname, image FROM users WHERE id = $1", userId)
-	ur.m.RUnlock()
+		"SELECT id, email, password, created_at, name, surname, image, rating FROM users WHERE id = $1", userId)
 
 	user := models.UserData{}
-	if err := row.Scan(&user.Id, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
-		&user.Name, &user.Surname, &user.Image); err != nil {
+	if err := row.Scan(&user.Id, &user.Email, &user.Password, &user.CreatedAt,
+		&user.Name, &user.Surname, &user.Image, &user.Rating); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
-			return nil, codes.NewDatabaseError(codes.EmptyRow)
+			return nil, internalError.EmptyQuery
 		}
-		return nil, codes.NewDatabaseError(codes.UnexpectedDbError)
+		return nil, internalError.GenInternalError(err)
 	}
 
 	return &user, nil
 }
 
-func (ur *UserRepository) Update(user *models.UserData) *codes.DatabaseError {
-	res, err := ur.pool.Exec(context.Background(),
-		"UPDATE users SET username = $2, email = $3, password = $4, name = $5, surname = $6, image = $7 WHERE id = $1",
-		user.Id, user.Username, user.Email, user.Password, user.Name, user.Surname, user.Image)
-
+func (ur *UserRepository) Update(user *models.UserData) error {
+	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
 	if err != nil {
-		log.Fatalf(err.Error())
-		return codes.NewDatabaseError(codes.UnableToUpdate)
+		return internalError.GenInternalError(err)
 	}
 
-	if count := res.RowsAffected(); count != 1 {
-		return codes.NewDatabaseError(codes.NotUpdated)
+	ct, err := tx.Exec(context.Background(),
+		"UPDATE users SET email = $2, password = $3, name = $4, surname = $5, image = $6 WHERE id = $1",
+		user.Id, user.Email, user.Password, user.Name, user.Surname, user.Image)
+
+	if ra := ct.RowsAffected(); ra != 1 || err != nil {
+		rollbackErr := tx.Rollback(context.Background())
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+
+		if ra != 1 {
+			return internalError.NotUpdated
+		}
+
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
 	}
 
 	return nil
