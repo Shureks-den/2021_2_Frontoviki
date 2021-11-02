@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -124,7 +123,6 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 	if err != nil {
-		log.Println(err.Error())
 		return nil, internalError.EmptyQuery
 	}
 

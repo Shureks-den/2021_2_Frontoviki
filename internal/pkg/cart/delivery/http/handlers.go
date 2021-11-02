@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	internalError "yula/internal/error"
@@ -41,9 +42,8 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ch.GetCartHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	// s.HandleFunc("/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("/{id:[0-9]+}/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
@@ -199,6 +199,13 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 	adverts := make([]*models.Advert, 0)
 	for _, e := range cart {
 		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId)
+		if err == internalError.EmptyQuery {
+			logger.Warnf("adverts move to archive")
+			w.WriteHeader(http.StatusOK)
+			w.Write(models.ToBytes(http.StatusConflict, fmt.Sprintf("advert %d move to archive", e.AdvertId), nil))
+			return
+		}
+
 		if err != nil {
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
