@@ -143,7 +143,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	adverts := []*models.Advert{}
+	adverts := make([]*models.Advert, 0, len(cartInputed))
 	for _, element := range cartInputed {
 		advert, err := ch.advertUsecase.GetAdvert(element.AdvertId)
 		if err != nil {
