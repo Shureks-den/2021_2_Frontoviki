@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/csrf"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -128,6 +129,15 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 			})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func Routing(r *mux.Router) {
+	r.HandleFunc("/csrf", SetSCRFToken(http.HandlerFunc(CSRFHandler))).Methods(http.MethodGet, http.MethodOptions)
+}
+
+func CSRFHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "csrf setted", nil))
 }
 
 func SetSCRFToken(next http.Handler) http.HandlerFunc {

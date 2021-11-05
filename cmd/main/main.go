@@ -110,14 +110,15 @@ func main() {
 	sh.Routing(api)
 	ch.Routing(api, sm)
 	cath.Routing(api)
+	middleware.Routing(api)
 
 	//http
-	// fmt.Println("start serving ::8080")
-	// error := http.ListenAndServe(":8080", r)
+	fmt.Println("start serving ::8080")
+	error := http.ListenAndServe(":8080", r)
 
 	// //https
-	fmt.Println("start serving ::5000")
-	error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
+	// fmt.Println("start serving ::5000")
+	// error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
 
 	logger.Errorf("http serve error %v", error)
 }
