@@ -1,11 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"yula/internal/config"
 	"yula/internal/database"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/stdlib"
+
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
 	"yula/internal/pkg/logging"
@@ -47,6 +52,20 @@ func init() {
 	govalidator.SetFieldsRequiredByDefault(true)
 }
 
+func getPostgres() *sql.DB {
+	dsn := "user=postgres dbname=yula password=password host=127.0.0.1 port=5432 sslmode=disable"
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		log.Fatalln("cant parse config", err)
+	}
+	err = db.Ping() // вот тут будет первое подключение к базе
+	if err != nil {
+		log.Fatalln(err)
+	}
+	db.SetMaxOpenConns(10)
+	return db
+}
+
 // @title Volchock's API
 // @version 1.0
 // @description Advert placement service
@@ -72,6 +91,8 @@ func main() {
 	}
 	defer postgres.Close()
 
+	sqlDB := getPostgres()
+
 	r := mux.NewRouter()
 
 	r.PathPrefix("/swagger").HandlerFunc(httpSwagger.WrapHandler)
@@ -88,7 +109,7 @@ func main() {
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	cr := cartRep.NewCartRepository(postgres.GetDbPool())
-	catr := categoryRep.NewCategoryRepository(postgres.GetDbPool())
+	catr := categoryRep.NewCategoryRepository(sqlDB)
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)

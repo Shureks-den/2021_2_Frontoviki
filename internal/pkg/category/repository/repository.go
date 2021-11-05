@@ -1,37 +1,34 @@
 package repository
 
 import (
-	"context"
+	"database/sql"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/category"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type CategoryRepository struct {
-	pool *pgxpool.Pool
+	DB *sql.DB
 }
 
-func NewCategoryRepository(pool *pgxpool.Pool) category.CategoryRepository {
+func NewCategoryRepository(DB *sql.DB) category.CategoryRepository {
 	return &CategoryRepository{
-		pool: pool,
+		DB: DB,
 	}
 }
 
 func (cr *CategoryRepository) SelectCategories() ([]*models.Category, error) {
-	queryStr := "SELECT name FROM category;"
-	query, err := cr.pool.Query(context.Background(), queryStr)
+	rows, err := cr.DB.Query("SELECT name FROM category")
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}
 
-	defer query.Close()
+	defer rows.Close()
 	categories := make([]*models.Category, 0)
-	for query.Next() {
+	for rows.Next() {
 		var ctgry models.Category
 
-		err = query.Scan(&ctgry.Name)
+		err = rows.Scan(&ctgry.Name)
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
