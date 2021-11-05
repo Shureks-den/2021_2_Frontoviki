@@ -49,29 +49,29 @@ func TestGetByEmail(t *testing.T) {
 	ur := mocks.UserRepository{}
 	uu := NewUserUsecase(&ur, ilu)
 
-	reqUser := models.UserSignUp{
+	reqUser := &models.UserSignUp{
 		Password: "password",
 		Email:    "superchel@shibanov.jp",
 	}
 
-	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
-	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
+	user := &models.UserData{
+		Id:       0,
+		Password: "aboba",
+		Email:    reqUser.Email,
+	}
 
-	createdUser, error := uu.Create(&reqUser)
+	ur.On("SelectByEmail", reqUser.Email).Return(user, nil)
+	userRes, error := uu.GetByEmail(reqUser.Email)
 	assert.Nil(t, error)
 
-	ur.On("SelectByEmail", reqUser.Email).Return(createdUser, nil)
-	user, error := uu.GetByEmail(createdUser.Email)
-	assert.Nil(t, error)
-
-	assert.Equal(t, user.Email, createdUser.Email)
+	assert.Equal(t, userRes.Email, user.Email)
 }
 
 func TestTwiceCreate(t *testing.T) {
 	ur := mocks.UserRepository{}
 	uu := NewUserUsecase(&ur, ilu)
 
-	reqUser := models.UserSignUp{
+	reqUser := &models.UserSignUp{
 		Password: "password",
 		Email:    "superchel@shibanov.jp",
 	}
@@ -79,11 +79,11 @@ func TestTwiceCreate(t *testing.T) {
 	ur.On("SelectByEmail", reqUser.Email).Return(nil, myerr.EmptyQuery).Once()
 	ur.On("Insert", mock.MatchedBy(func(ud *models.UserData) bool { return ud.Email == reqUser.Email })).Return(nil).Once()
 
-	createdUser, error := uu.Create(&reqUser)
+	createdUser, error := uu.Create(reqUser)
 	assert.Nil(t, error)
 
 	ur.On("SelectByEmail", reqUser.Email).Return(createdUser, nil)
-	usr, error := uu.Create(&reqUser)
+	usr, error := uu.Create(reqUser)
 
 	assert.Equal(t, error, myerr.AlreadyExist)
 	assert.Nil(t, usr)
