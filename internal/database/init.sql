@@ -4,13 +4,16 @@ DROP TABLE price_history;
 DROP TABLE favorite;
 DROP TABLE advert_image;
 DROP TABLE advert;
-DROP TABLE category;*/
+DROP TABLE category;
+DROP TABLE rating;
+*/
 --DROP TABLE users;
 
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email text UNIQUE NOT NULL,
+	phone text NOT NULL DEFAULT '',
     password text NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     name text NOT NULL DEFAULT '',
@@ -83,7 +86,14 @@ CREATE TABLE IF NOT EXISTS cart (
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
-SELECT * FROM cart;
+CREATE TABLE IF NOT EXISTS rating (
+	user_id int NOT NULL,
+	advert_id int NOT NULL,
+	rate int NOT NULL,
+	
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
+);
 
 /*
 INSERT INTO category (name) values ('Одежда'), ('Обувь'), ('Животные');

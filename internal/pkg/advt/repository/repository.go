@@ -45,7 +45,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 	}
 	defer rows.Close()
 
-	var adverts []*models.Advert
+	adverts := make([]*models.Advert, 0)
 	var advertPathImages []*string
 	for rows.Next() {
 		advert := &models.Advert{}

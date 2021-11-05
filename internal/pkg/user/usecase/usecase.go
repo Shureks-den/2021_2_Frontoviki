@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -25,6 +26,7 @@ func NewUserUsecase(repo user.UserRepository, imageLoaderUse imageloader.ImageLo
 
 func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, error) {
 	if _, err := uu.GetByEmail(userSU.Email); err != internalError.NotExist {
+		fmt.Println(err.Error())
 		switch err {
 		case nil:
 			return nil, internalError.AlreadyExist
@@ -41,6 +43,7 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, erro
 
 	user := models.UserData{}
 	user.Email = userSU.Email
+	user.Phone = ""
 	user.Password = string(passwordHash)
 	user.Name = userSU.Name
 	user.Surname = userSU.Surname
@@ -59,6 +62,7 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, erro
 func (uu *UserUsecase) GetByEmail(email string) (*models.UserData, error) {
 	user, err := uu.userRepo.SelectByEmail(email)
 
+	fmt.Println(err.Error())
 	if err == nil {
 		return user, nil
 	}

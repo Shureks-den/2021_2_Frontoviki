@@ -90,7 +90,6 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	if servErr != nil {
 		logger.Warnf("can not create user: %s", servErr.Error())
 		w.WriteHeader(http.StatusOK)
-
 		metaCode, metaMessage := internalError.ToMetaStatus(servErr)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
