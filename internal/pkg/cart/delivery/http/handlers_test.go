@@ -588,7 +588,6 @@ func TestCheckoutSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)
@@ -790,7 +789,6 @@ func TestCheckoutFailMakeOrder(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)

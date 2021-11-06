@@ -47,7 +47,6 @@ func TestSession_SignInHandler_Success(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 
 	sessionCreated := models.Session{
@@ -143,7 +142,6 @@ func TestSession_SignInHandler_InvalidPassword(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 
 	uu.On("GetByEmail", reqUser.Email).Return(&user, nil)

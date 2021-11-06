@@ -57,7 +57,6 @@ func TestSignUpHandlerValid(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 
@@ -135,7 +134,6 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 	uu.On("Create", &reqUser).Return(nil, myerr.AlreadyExist)
@@ -194,7 +192,6 @@ func TestSignUpHandlerFailCreateSession(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 	su.On("Create", userCreated.Id).Return(nil, myerr.InternalError).Once()

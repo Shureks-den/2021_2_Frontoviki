@@ -43,13 +43,13 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/archive", middleware.SetSCRFToken(http.Handler(sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/category/{category}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertListByCategoryHandler))).Methods(http.MethodGet, http.MethodOptions)
 
-	s.HandleFunc("/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertDetailHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.AdvertDetailHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 
-	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
@@ -170,6 +170,10 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @Router /adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -201,8 +205,17 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	rateStat, err := ah.userUsecase.GetRating(userId, salesman.Id)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 	logger.Debug("advert found successfully")
 }
@@ -461,6 +474,11 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 // @Router /adverts/salesman/{id} [get]
 func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
 	vars := mux.Vars(r)
 	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -510,8 +528,17 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 
 	shortAdverts := ah.advtUsecase.AdvertsToShort(adverts)
 
+	rateStat, err := ah.userUsecase.GetRating(userId, salesman.Id)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts}
+	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
 }
 

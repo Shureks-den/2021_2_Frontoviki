@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
@@ -42,6 +43,15 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 		return internalError.GenInternalError(err)
 	}
 
+	_, err = tx.Exec(context.Background(), "INSERT INTO rating_statistics(user_id) VALUES ($1);", id)
+	if err != nil {
+		rollbackError := tx.Rollback(context.Background())
+		if rollbackError != nil {
+			return rollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return internalError.NotCommited
@@ -53,11 +63,13 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 
 func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, email, phone, password, created_at, name, surname, image, rating FROM users WHERE email = $1", email)
+		"SELECT id, email, phone, password, created_at, name, surname, image FROM users WHERE email = $1",
+		email)
 
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Email, &user.Phone, &user.Password, &user.CreatedAt,
-		&user.Name, &user.Surname, &user.Image, &user.Rating); err != nil {
+		&user.Name, &user.Surname, &user.Image); err != nil {
+		fmt.Println("email", err.Error())
 		switch err.Error() {
 		case "no rows in result set":
 			return nil, internalError.EmptyQuery
@@ -70,11 +82,12 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) 
 
 func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 	row := ur.pool.QueryRow(context.Background(),
-		"SELECT id, email, phone, password, created_at, name, surname, image, rating FROM users WHERE id = $1", userId)
+		"SELECT id, email, phone, password, created_at, name, surname, image FROM users WHERE id = $1",
+		userId)
 
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Email, &user.Phone, &user.Password, &user.CreatedAt,
-		&user.Name, &user.Surname, &user.Image, &user.Rating); err != nil {
+		&user.Name, &user.Surname, &user.Image); err != nil {
 		switch err.Error() {
 		case "no rows in result set":
 			return nil, internalError.EmptyQuery

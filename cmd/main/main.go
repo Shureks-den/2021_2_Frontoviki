@@ -8,7 +8,6 @@ import (
 	"yula/internal/config"
 	"yula/internal/database"
 
-	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/stdlib"
 
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
@@ -107,13 +106,14 @@ func main() {
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
 	ur := userRep.NewUserRepository(postgres.GetDbPool())
+	rr := userRep.NewRatingRepository(sqlDB)
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	cr := cartRep.NewCartRepository(postgres.GetDbPool())
 	catr := categoryRep.NewCategoryRepository(sqlDB)
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)
-	uu := userUse.NewUserUsecase(ur, ilu)
+	uu := userUse.NewUserUsecase(ur, rr, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 	cu := cartUse.NewCartUsecase(cr)
 	catu := categoryUse.NewCategoryUsecase(catr)

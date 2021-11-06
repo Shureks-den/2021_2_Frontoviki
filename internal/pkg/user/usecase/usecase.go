@@ -12,14 +12,17 @@ import (
 )
 
 type UserUsecase struct {
-	userRepo       user.UserRepository
-	imageLoaderUse imageloader.ImageLoaderUsecase
+	userRepo             user.UserRepository
+	userRatingRepository user.RatingRepository
+	imageLoaderUse       imageloader.ImageLoaderUsecase
 }
 
-func NewUserUsecase(repo user.UserRepository, imageLoaderUse imageloader.ImageLoaderUsecase) user.UserUsecase {
+func NewUserUsecase(repo user.UserRepository, userRatingRepository user.RatingRepository,
+	imageLoaderUse imageloader.ImageLoaderUsecase) user.UserUsecase {
 	return &UserUsecase{
-		userRepo:       repo,
-		imageLoaderUse: imageLoaderUse,
+		userRepo:             repo,
+		userRatingRepository: userRatingRepository,
+		imageLoaderUse:       imageLoaderUse,
 	}
 }
 
@@ -177,4 +180,79 @@ func (uu *UserUsecase) UpdatePassword(userId int64, changePassword *models.Chang
 	user.Password = string(passwordHash)
 	err = uu.userRepo.Update(user)
 	return err
+}
+
+func (uu *UserUsecase) SetRating(rating *models.Rating) error {
+	lastRating, err := uu.userRatingRepository.SelectRating(rating.UserFrom, rating.UserTo)
+	var rate, count int = 0, 0
+
+	// если рейтинга нет и намерение удалить рейтинг
+	if err == internalError.EmptyQuery && rating.Rating == 0 {
+		// отвечаем, что все ок, удалено
+		return nil
+
+		// если рейтинга нет и намерение поставить оценку
+	} else if err == internalError.EmptyQuery && rating.Rating > 0 {
+		err = uu.userRatingRepository.InsertRating(rating)
+		rate = rating.Rating
+		count = 1
+
+		// если рейтинг уже есть и намерение удалить его
+	} else if err == nil && rating.Rating == 0 {
+		err = uu.userRatingRepository.DeleteRating(rating)
+		// поставим отрицательную оценку, чтобы бд корректно удалила
+		rate = -lastRating.Rating
+		count = -1
+
+		// если рейтинг уже есть и намерение обновить его
+	} else if err == nil && rating.Rating > 0 {
+		err = uu.userRatingRepository.UpdateRating(rating)
+		rate = rating.Rating - lastRating.Rating
+		count = 0
+	} else {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// после обновления rating необходимо обновить статистику
+	err = uu.userRatingRepository.UpdateStat(rating.UserTo, rate, count)
+	return err
+}
+
+func (uu *UserUsecase) GetRating(userFrom int64, userTo int64) (*models.RatingStat, error) {
+	sum, count, err := uu.userRatingRepository.SelectStat(userTo)
+	if err != nil {
+		return nil, err
+	}
+
+	var avg float32 = 0.0
+	if count > 0 {
+		avg = float32(sum) / float32(count)
+	}
+	ratingStat := &models.RatingStat{
+		RatingSum:   sum,
+		RatingCount: count,
+		RatingAvg:   avg,
+	}
+
+	rating, err := uu.userRatingRepository.SelectRating(userFrom, userTo)
+	if userFrom == 0 || userFrom == userTo || err != nil {
+		ratingStat.IsRated = false
+		ratingStat.PersonalRate = 0
+
+		switch err {
+		case internalError.EmptyQuery:
+			return ratingStat, nil
+
+		default:
+			return nil, err
+		}
+	}
+
+	ratingStat.IsRated = true
+	ratingStat.PersonalRate = int(rating.Rating)
+	return ratingStat, nil
 }

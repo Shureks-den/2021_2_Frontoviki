@@ -1,13 +1,12 @@
-/*
-DROP TABLE cart;
-DROP TABLE price_history;
-DROP TABLE favorite;
-DROP TABLE advert_image;
-DROP TABLE advert;
-DROP TABLE category;
-DROP TABLE rating;
-*/
---DROP TABLE users;
+-- DROP TABLE rating_statistics;
+-- DROP TABLE rating;
+-- DROP TABLE cart;
+-- DROP TABLE price_history;
+-- DROP TABLE favorite;
+-- DROP TABLE advert_image;
+-- DROP TABLE advert;
+-- DROP TABLE category;
+-- DROP TABLE users;
 
 
 CREATE TABLE IF NOT EXISTS users (
@@ -18,8 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     name text NOT NULL DEFAULT '',
     surname text NOT NULL DEFAULT '',
-    image text NOT NULL DEFAULT '',
-	rating DECIMAL(4, 2) DEFAULT 0.0
+    image text NOT NULL DEFAULT ''
 );
 
 
@@ -87,15 +85,24 @@ CREATE TABLE IF NOT EXISTS cart (
 );
 
 CREATE TABLE IF NOT EXISTS rating (
-	user_id int NOT NULL,
-	advert_id int NOT NULL,
+	user_from int NOT NULL,
+	user_to int NOT NULL,
 	rate int NOT NULL,
 	
-	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
+	FOREIGN KEY (user_from) REFERENCES users (id) ON DELETE CASCADE,
+	FOREIGN KEY (user_to) REFERENCES users (id) ON DELETE CASCADE
 );
 
-/*
-INSERT INTO category (name) values ('Одежда'), ('Обувь'), ('Животные');
-INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 1), ('Манчкин', 1, 3);
-INSERT INTO advert_image (advert_id, img_path) VALUES (1, 'hudi1'), (1, 'hudi2'), (2, 'manch1');*/
+CREATE TABLE IF NOT EXISTS rating_statistics (
+	user_id int NOT NULL,
+	sum int NOT NULL DEFAULT 0,
+	count int NOT NULL DEFAULT 0,
+	
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+select * from rating_statistics;
+
+-- INSERT INTO category (name) values ('одежда'), ('обувь'), ('животные');
+-- INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 1), ('Манчкин', 1, 3);
+-- INSERT INTO advert_image (advert_id, img_path) VALUES (1, 'hudi1'), (1, 'hudi2'), (2, 'manch1');

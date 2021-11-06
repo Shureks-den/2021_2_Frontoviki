@@ -70,6 +70,26 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 	})
 }
 
+func (sm *SessionMiddleware) SoftCheckAuthorized(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_id")
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		session, err := sm.sessionUsecase.Check(cookie.Value)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctxId := context.WithValue(r.Context(), ContextUserId, session.UserId)
+		r = r.WithContext(ctxId)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

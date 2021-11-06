@@ -159,7 +159,6 @@ func TestAdvertDetailSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("GetAdvert", ad.Id).Return(&ad, nil)
@@ -254,7 +253,6 @@ func TestAdvertDetailFailGetPublisher(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("GetAdvert", ad.Id).Return(&ad, nil)
@@ -301,7 +299,7 @@ func TestAdUpdateSuccess(t *testing.T) {
 	// 	Id:        0,
 	// 	Email:     "aboba@baobab.com",
 	// 	CreatedAt: time.Now(),
-	// 	Rating:    5,
+	// 	RatingSum:    5,
 	// }
 
 	au.On("UpdateAdvert", ad.Id, &newAd).Return(nil)
@@ -410,7 +408,7 @@ func TestAdUpdateFailUpdateAd(t *testing.T) {
 	// 	Id:        0,
 	// 	Email:     "aboba@baobab.com",
 	// 	CreatedAt: time.Now(),
-	// 	Rating:    5,
+	// 	RatingSum:    5,
 	// }
 
 	au.On("UpdateAdvert", ad.Id, &newAd).Return(myerr.InternalError)
@@ -458,7 +456,6 @@ func TestDeleteAdSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("DeleteAdvert", ad.Id, profile.Id).Return(nil)
@@ -528,7 +525,6 @@ func TestDeleteFail(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("DeleteAdvert", ad.Id, profile.Id).Return(myerr.InternalError)
@@ -571,7 +567,6 @@ func TestDeleteFailParse(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("DeleteAdvert", ad.Id, profile.Id).Return(myerr.InternalError)
@@ -614,7 +609,6 @@ func TestCloseAdSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("CloseAdvert", ad.Id, profile.Id).Return(nil)
@@ -684,7 +678,6 @@ func TestCloseAdFail(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("CloseAdvert", ad.Id, profile.Id).Return(myerr.InternalError)
@@ -731,7 +724,6 @@ func TestUploadImageSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("UploadImages", mock.AnythingOfType("[]*multipart.FileHeader"), ad.Id, profile.Id).Return(&ad, nil)
@@ -817,7 +809,6 @@ func TestUploadImageFailUpload(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("UploadImages", mock.AnythingOfType("[]*multipart.FileHeader"), ad.Id, profile.Id).Return(nil, myerr.InternalError)
@@ -875,7 +866,6 @@ func TestUploadImageFailGetById(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	au.On("UploadImages", mock.AnythingOfType("[]*multipart.FileHeader"), ad.Id, profile.Id).Return(&ad, nil)

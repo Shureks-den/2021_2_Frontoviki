@@ -18,4 +18,7 @@ type UserUsecase interface {
 	GetById(id int64) (*models.Profile, error)
 	UpdateProfile(userId int64, userNew *models.UserData) (*models.Profile, error)
 	UploadAvatar(file *multipart.FileHeader, userId int64) (*models.UserData, error)
+
+	SetRating(rating *models.Rating) error
+	GetRating(userFrom int64, userTo int64) (*models.RatingStat, error)
 }

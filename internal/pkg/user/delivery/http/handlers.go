@@ -38,6 +38,7 @@ func (uh *UserHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 	s.Handle("/profile", sm.CheckAuthorized(http.HandlerFunc(uh.UpdateProfileHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/upload", sm.CheckAuthorized(http.HandlerFunc(uh.UploadProfileImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/profile/password", sm.CheckAuthorized(http.HandlerFunc(uh.ChangePasswordHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/profile/rating", sm.CheckAuthorized(http.HandlerFunc(uh.RatingHandler))).Methods(http.MethodPost, http.MethodOptions)
 }
 
 var (
@@ -51,7 +52,7 @@ var (
 // @Accept application/json
 // @Produce application/json
 // @Param user body models.UserSignUp true "User sign up data"
-// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyProfile}
 // @failure default {object} models.HttpError
 // @Router /signup [post]
 func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +130,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 // @Tags user
 // @Accept application/json
 // @Produce application/json
-// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyProfile}
 // @failure default {object} models.HttpError
 // @Router /users/profile [get]
 func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -151,11 +152,19 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	rateStat, err := uh.userUsecase.GetRating(userId, userId)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
 
-	body := models.HttpBodyProfile{Profile: *profile}
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyProfile{Profile: *profile, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
-	logger.Debugf("user %d created successfully", userId)
+	logger.Debugf("user %d got successfully", userId)
 }
 
 // GetProfileHandler godoc
@@ -165,7 +174,7 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 // @Accept application/json
 // @Produce application/json
 // @Param profile body models.Profile true "New profile"
-// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyProfile}
 // @failure default {object} models.HttpError
 // @Router /users/profile [post]
 func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Request) {
@@ -213,9 +222,17 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	rateStat, err := uh.userUsecase.GetRating(userId, userId)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
 
-	body := models.HttpBodyProfile{Profile: *profile}
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyProfile{Profile: *profile, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
 	logger.Debugf("user %d profile updated", userId)
 }
@@ -227,7 +244,7 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 // @Accept application/json
 // @Produce application/json
 // @Param avatar formData file true "Uploaded avatar"
-// @Success 200 {object} models.HttpBodyInterface{body=models.Profile}
+// @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyProfile}
 // @failure default {object} models.HttpError
 // @Router /users/profile/upload [post]
 func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.Request) {
@@ -268,8 +285,17 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	rateStat, err := uh.userUsecase.GetRating(userId, userId)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
+	body := models.HttpBodyProfile{Profile: *user.ToProfile(), Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "avatar uploaded successfully", body))
 	logger.Debugf("user %d avatar uploaded successfully", userId)
 }
@@ -330,4 +356,54 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "password changed", nil))
 	logger.Debugf("user %d changed password successfully", userId)
+}
+
+// RatingHandler godoc
+// @Summary Rate users
+// @Description Rate users
+// @Tags user
+// @Accept application/json
+// @Produce application/json
+// @Param body body models.Rating true "Rate user model"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /users/profile/rating [post]
+func (uh *UserHandler) RatingHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	defer r.Body.Close()
+	inputRating := &models.Rating{}
+	err := json.NewDecoder(r.Body).Decode(&inputRating)
+	if err != nil {
+		logger.Warnf("bad request: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(inputRating)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		return
+	}
+
+	inputRating.UserFrom = userId
+	err = uh.userUsecase.SetRating(inputRating)
+	if err != nil {
+		logger.Warnf("cannot set rating: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "user appreciated", nil))
 }
