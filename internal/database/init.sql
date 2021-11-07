@@ -9,6 +9,23 @@
 -- DROP TABLE users;
 
 
+-- CREATE TEXT SEARCH DICTIONARY russian_ispell (
+--     TEMPLATE = ispell,
+--     DictFile = russian,
+--     AffFile = russian,
+--     StopWords = russian
+-- );
+
+-- CREATE TEXT SEARCH CONFIGURATION ru (COPY=russian);
+
+-- ALTER TEXT SEARCH CONFIGURATION ru
+--     ALTER MAPPING FOR hword, hword_part, word
+--     WITH russian_ispell, russian_stem;
+
+-- CREATE EXTENSION postgis;
+-- CREATE EXTENSION postgis_topology;
+
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email text UNIQUE NOT NULL,
@@ -101,8 +118,7 @@ CREATE TABLE IF NOT EXISTS rating_statistics (
 	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
-select * from rating_statistics;
 
 -- INSERT INTO category (name) values ('одежда'), ('обувь'), ('животные');
--- INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 1, 1), ('Манчкин', 1, 3);
--- INSERT INTO advert_image (advert_id, img_path) VALUES (1, 'hudi1'), (1, 'hudi2'), (2, 'manch1');
+-- INSERT INTO advert (name, publisher_id, category_id) values ('Худи спортивная', 2, 1), ('Манчкин', 1, 3);
+-- INSERT INTO advert_image (advert_id, img_path) VALUES (2, 'hudi1'), (2, 'hudi2');

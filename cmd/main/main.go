@@ -30,6 +30,10 @@ import (
 	cartRep "yula/internal/pkg/cart/repository"
 	cartUse "yula/internal/pkg/cart/usecase"
 
+	srchHttp "yula/internal/pkg/search/delivery/http"
+	srchRep "yula/internal/pkg/search/repository"
+	srchUse "yula/internal/pkg/search/usecase"
+
 	categoryHttp "yula/internal/pkg/category/delivery/http"
 	categoryRep "yula/internal/pkg/category/repository"
 	categoryUse "yula/internal/pkg/category/usecase"
@@ -109,6 +113,7 @@ func main() {
 	rr := userRep.NewRatingRepository(sqlDB)
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
 	cr := cartRep.NewCartRepository(postgres.GetDbPool())
+	serr := srchRep.NewSearchRepository(sqlDB)
 	catr := categoryRep.NewCategoryRepository(sqlDB)
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
@@ -116,12 +121,14 @@ func main() {
 	uu := userUse.NewUserUsecase(ur, rr, ilu)
 	su := sessUse.NewSessionUsecase(sr)
 	cu := cartUse.NewCartUsecase(cr)
+	seru := srchUse.NewSearchUsecase(serr, ar)
 	catu := categoryUse.NewCategoryUsecase(catr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
 	sh := sessHttp.NewSessionHandler(su, uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
+	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
 
 	sm := middleware.NewSessionMiddleware(su)
@@ -130,6 +137,7 @@ func main() {
 	uh.Routing(api, sm)
 	sh.Routing(api)
 	ch.Routing(api, sm)
+	serh.Routing(api)
 	cath.Routing(api)
 	middleware.Routing(api)
 
