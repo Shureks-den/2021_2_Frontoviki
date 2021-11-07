@@ -52,8 +52,8 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
 
 	s.Handle("/favorite", sm.CheckAuthorized(http.HandlerFunc(ah.FavoriteListHandler))).Methods(http.MethodGet, http.MethodOptions)
-	s.Handle("/favorite/add/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
-	s.Handle("/favorite/remove/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
+	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
