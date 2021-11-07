@@ -7,7 +7,7 @@ import (
 type UserData struct {
 	Id        int64     `json:"id" valid:"-"`
 	Email     string    `json:"email" valid:"email"`
-	Phone     string    `json:"phone" valid:"stringlength(11|11)"`
+	Phone     string    `json:"phone" valid:"stringlength(11|11),optional"`
 	Password  string    `json:"password" valid:"type(string),minstringlength(4),optional"`
 	CreatedAt time.Time `json:"created_at" valid:"-"`
 	Name      string    `json:"name" valid:"type(string),minstringlength(2)"`
