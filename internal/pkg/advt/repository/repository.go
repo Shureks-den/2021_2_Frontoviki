@@ -335,3 +335,140 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 	}
 	return adverts, nil
 }
+
+func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64) ([]*models.Advert, error) {
+	queryStr := `
+		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+		JOIN favorite f ON a.id = f.advert_id
+		JOIN category c ON a.category_id = c.Id 
+		LEFT JOIN advert_image ai ON a.id = ai.advert_id
+		WHERE f.user_id = $1
+		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new
+		LIMIT $2 OFFSET $3;
+	`
+	query, err := ar.pool.Query(context.Background(), queryStr, userId, count, from*count)
+	if err != nil {
+		return nil, internalError.GenInternalError(err)
+	}
+
+	defer query.Close()
+	adverts := make([]*models.Advert, 0)
+	for query.Next() {
+		var advert models.Advert
+		var advertPathImages []*string
+
+		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+
+		if err != nil {
+			return nil, internalError.GenInternalError(err)
+		}
+
+		advert.Images = []string{}
+		for _, path := range advertPathImages {
+			if path != nil {
+				advert.Images = append(advert.Images, *path)
+			}
+		}
+
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
+		}
+
+		adverts = append(adverts, &advert)
+	}
+	return adverts, nil
+}
+
+func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert, error) {
+	queryStr := `
+		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+		JOIN category c ON a.category_id = c.Id
+		LEFT JOIN advert_image ai ON a.id = ai.advert_id 
+		JOIN favorite f ON a.id = f.advert_id AND f.user_id = $2
+		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name
+		HAVING a.id = $1;
+	`
+	queryRow := ar.pool.QueryRow(context.Background(), queryStr, advertId, userId)
+
+	var advert models.Advert
+	var advertPathImages []*string
+
+	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+
+	if err != nil {
+		switch err.Error() {
+		case "no rows in result set":
+			return nil, internalError.EmptyQuery
+
+		default:
+			return nil, internalError.GenInternalError(err)
+		}
+	}
+
+	advert.Images = []string{}
+	for _, path := range advertPathImages {
+		if path != nil {
+			advert.Images = append(advert.Images, *path)
+		}
+	}
+
+	return &advert, nil
+}
+
+func (ar *AdvtRepository) InsertFavorite(userId, advertId int64) error {
+	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	_, err = tx.Exec(context.Background(),
+		"INSERT INTO favorite(user_id, advert_id) VALUES ($1, $2);",
+		userId, advertId)
+	if err != nil {
+		rollbackErr := tx.Rollback(context.Background())
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) DeleteFavorite(userId, advertId int64) error {
+	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	_, err = tx.Exec(context.Background(),
+		"DELETE FROM favorite WHERE user_id = $1 AND advert_id = $2;",
+		userId, advertId)
+	if err != nil {
+		rollbackErr := tx.Rollback(context.Background())
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}

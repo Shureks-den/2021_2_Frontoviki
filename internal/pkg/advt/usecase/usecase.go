@@ -151,3 +151,32 @@ func (au *AdvtUsecase) GetAdvertListByCategory(categoryName string, page *models
 
 	return adverts, nil
 }
+
+func (au *AdvtUsecase) GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error) {
+	adverts, err := au.advtRepository.SelectFavoriteAdverts(userId, page.PageNum, page.Count)
+	if err == nil || err == internalError.EmptyQuery {
+		return adverts, nil
+	}
+
+	return nil, err
+}
+
+func (au *AdvtUsecase) AddFavorite(userId int64, advertId int64) error {
+	_, err := au.advtRepository.SelectFavorite(userId, advertId)
+	switch err {
+	case internalError.EmptyQuery:
+		err = au.advtRepository.InsertFavorite(userId, advertId)
+		return err
+	}
+	return err
+}
+
+func (au *AdvtUsecase) RemoveFavorite(userId int64, advertId int64) error {
+	_, err := au.advtRepository.SelectFavorite(userId, advertId)
+	switch err {
+	case nil:
+		err = au.advtRepository.DeleteFavorite(userId, advertId)
+		return err
+	}
+	return err
+}

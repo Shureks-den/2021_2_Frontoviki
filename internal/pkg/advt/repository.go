@@ -8,6 +8,7 @@ type AdvtRepository interface {
 	SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.Advert, error)
 	SelectAdvertsByPublisherId(publisherId int64, is_active bool, offset int64, limit int64) ([]*models.Advert, error)
 	SelectAdvertsByCategory(categoryName string, from, count int64) ([]*models.Advert, error)
+	SelectFavoriteAdverts(userId int64, from, count int64) ([]*models.Advert, error)
 
 	Insert(advert *models.Advert) error
 	SelectById(advertId int64) (*models.Advert, error)
@@ -15,4 +16,8 @@ type AdvtRepository interface {
 	Delete(advertId int64) error
 
 	EditImages(advertId int64, newImages []string) error
+
+	SelectFavorite(userId, advertId int64) (*models.Advert, error)
+	InsertFavorite(userId, advertId int64) error
+	DeleteFavorite(userId, advertId int64) error
 }

@@ -50,6 +50,10 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 
 	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
+
+	s.Handle("/favorite", sm.CheckAuthorized(http.HandlerFunc(ah.FavoriteListHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/favorite/add/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/favorite/remove/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
@@ -631,4 +635,126 @@ func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
+}
+
+// FavoriteListHandler godoc
+// @Summary Get list of favorite adverts
+// @Description Get list of favorite adverts
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=HttpBodyAdverts}
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite [get]
+func (ah *AdvertHandler) FavoriteListHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	query := r.URL.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		logger.Warnf("can not create page: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetFavoriteList(userId, page)
+	if err != nil {
+		logger.Warnf("can not get favorite list: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: adverts}
+	w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+}
+
+// AddFavoriteHandler godoc
+// @Summary Add to favorites
+// @Description Add to favorites
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param id query int true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite/{id} [post]
+func (ah *AdvertHandler) AddFavoriteHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.AddFavorite(userId, advertId)
+	if err != nil {
+		logger.Warnf("can not add to favorite: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "added to favorite", nil))
+}
+
+// RemoveFavoriteHandler godoc
+// @Summary Remove to favorites
+// @Description Remove to favorites
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param id query int true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite/{id} [delete]
+func (ah *AdvertHandler) RemoveFavoriteHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.RemoveFavorite(userId, advertId)
+	if err != nil {
+		logger.Warnf("can not remove from favorite: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "removed from favorite", nil))
 }
