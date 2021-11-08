@@ -50,7 +50,6 @@ func (sr *SessionRepository) AddNewConnectionToPool(cfg *config.TarantoolConfig)
 }
 
 func (sr *SessionRepository) Set(sess *models.Session) error {
-
 	sr.m.Lock()
 	conn := sr.pool[sr.roundRobinCur]
 	_, err := conn.Insert("sessions", []interface{}{sess.Value, sess.UserId, sess.ExpiresAt.Unix()})

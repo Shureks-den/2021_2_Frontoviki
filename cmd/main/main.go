@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"yula/internal/config"
-	"yula/internal/database"
 
 	_ "github.com/jackc/pgx/stdlib"
 
@@ -42,7 +41,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
-	_ "yula/docs"
+	// _ "yula/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -55,8 +54,7 @@ func init() {
 	govalidator.SetFieldsRequiredByDefault(true)
 }
 
-func getPostgres() *sql.DB {
-	dsn := "user=postgres dbname=yula password=password host=127.0.0.1 port=5432 sslmode=disable"
+func getPostgres(dsn string) *sql.DB {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		log.Fatalln("cant parse config", err)
@@ -87,14 +85,9 @@ func main() {
 	logger := logging.GetLogger()
 
 	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		logger.Fatalf("db error instance", err.Error())
-		return
-	}
-	defer postgres.Close()
 
-	sqlDB := getPostgres()
+	sqlDB := getPostgres(cnfg.DbConfig.DatabaseUrl)
+	defer sqlDB.Close()
 
 	r := mux.NewRouter()
 
@@ -108,11 +101,11 @@ func main() {
 	//api.Use(middleware.CSRFMiddleWare())
 
 	ilr := imageloaderRepo.NewImageLoaderRepository()
-	ar := advtRep.NewAdvtRepository(postgres.GetDbPool())
-	ur := userRep.NewUserRepository(postgres.GetDbPool())
+	ar := advtRep.NewAdvtRepository(sqlDB)
+	ur := userRep.NewUserRepository(sqlDB)
 	rr := userRep.NewRatingRepository(sqlDB)
 	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
-	cr := cartRep.NewCartRepository(postgres.GetDbPool())
+	cr := cartRep.NewCartRepository(sqlDB)
 	serr := srchRep.NewSearchRepository(sqlDB)
 	catr := categoryRep.NewCategoryRepository(sqlDB)
 

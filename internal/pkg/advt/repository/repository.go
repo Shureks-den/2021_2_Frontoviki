@@ -2,26 +2,22 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"sync"
+	"regexp"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
 	imageloader "yula/internal/pkg/image_loader"
-
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type AdvtRepository struct {
-	pool *pgxpool.Pool
-	m    sync.RWMutex
+	DB *sql.DB
 }
 
-func NewAdvtRepository(pool *pgxpool.Pool) advt.AdvtRepository {
+func NewAdvtRepository(DB *sql.DB) advt.AdvtRepository {
 	return &AdvtRepository{
-		pool: pool,
-		m:    sync.RWMutex{},
+		DB: DB,
 	}
 }
 
@@ -39,7 +35,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 		queryStr = fmt.Sprintf(queryStr, "")
 	}
 
-	rows, err := ar.pool.Query(context.Background(), queryStr, count, from*count)
+	rows, err := ar.DB.QueryContext(context.Background(), queryStr, count, from*count)
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}
@@ -75,27 +71,27 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 }
 
 func (ar *AdvtRepository) Insert(advert *models.Advert) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount, is_new) 
 				VALUES ($1, $2, (SELECT id FROM category WHERE name = $3), $4, $5, $6, $7, $8, $9, $10) RETURNING id;`
-	query := ar.pool.QueryRow(context.Background(), queryStr,
+	query := ar.DB.QueryRowContext(context.Background(), queryStr,
 		advert.Name, advert.Description, advert.Category, advert.PublisherId,
 		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount, advert.IsNew)
 
 	if err := query.Scan(&advert.Id); err != nil {
 		fmt.Println(err.Error())
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -112,7 +108,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 				GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name
 				HAVING a.id = $1;`
-	queryRow := ar.pool.QueryRow(context.Background(), queryStr, advertId)
+	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId)
 
 	var advert models.Advert
 	var advertPathImages []*string
@@ -136,7 +132,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 }
 
 func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
@@ -144,19 +140,19 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE c.name = $4), 
 				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9, date_close = $10, 
 				amount = $11, is_new = $12 WHERE id = $1 RETURNING id;`
-	query := tx.QueryRow(context.Background(), queryStr, newAdvert.Id, newAdvert.Name, newAdvert.Description,
+	query := tx.QueryRowContext(context.Background(), queryStr, newAdvert.Id, newAdvert.Name, newAdvert.Description,
 		newAdvert.Category, newAdvert.Location, newAdvert.Latitude, newAdvert.Longitude,
 		newAdvert.Price, newAdvert.IsActive, newAdvert.DateClose, newAdvert.Amount, newAdvert.IsNew)
 
 	err = query.Scan(&newAdvert.Id)
 	if err != nil {
-		if rlbckEr := tx.Rollback(context.Background()); rlbckEr != nil {
+		if rlbckEr := tx.Rollback(); rlbckEr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -164,20 +160,20 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 }
 
 func (ar *AdvtRepository) Delete(advertId int64) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
-	_, err = tx.Exec(context.Background(), "DELETE FROM advert WHERE id = $1;", advertId)
+	_, err = tx.ExecContext(context.Background(), "DELETE FROM advert WHERE id = $1;", advertId)
 	if err != nil {
-		if rlbckEr := tx.Rollback(context.Background()); rlbckEr != nil {
+		if rlbckEr := tx.Rollback(); rlbckEr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -186,17 +182,17 @@ func (ar *AdvtRepository) Delete(advertId int64) error {
 }
 
 func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	// сначала очищаем все картинки у объявления
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.ExecContext(context.Background(),
 		"DELETE FROM advert_image WHERE advert_id = $1;",
 		advertId)
 	if err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
@@ -205,11 +201,11 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 
 	// вставляем в базу новые url картинок
 	for _, image := range newImages {
-		_, err := tx.Exec(context.Background(),
+		_, err := tx.ExecContext(context.Background(),
 			"INSERT INTO advert_image (advert_id, img_path) VALUES ($1, $2);",
 			advertId, image)
 		if err != nil {
-			rollbackErr := tx.Rollback(context.Background())
+			rollbackErr := tx.Rollback()
 			if rollbackErr != nil {
 				return internalError.RollbackError
 			}
@@ -217,7 +213,7 @@ func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
 		}
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -250,7 +246,7 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 		)
 	}
 
-	rows, err := ar.pool.Query(context.Background(), queryStr, publisherId, limit, offset*limit)
+	rows, err := ar.DB.QueryContext(context.Background(), queryStr, publisherId, limit, offset*limit)
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}
@@ -300,7 +296,7 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 		HAVING a.is_active = true
 		LIMIT $2 OFFSET $3;
 	`
-	query, err := ar.pool.Query(context.Background(), queryStr, categoryName, count, from*count)
+	query, err := ar.DB.QueryContext(context.Background(), queryStr, categoryName, count, from*count)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, internalError.InternalError
@@ -348,7 +344,7 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new
 		LIMIT $2 OFFSET $3;
 	`
-	query, err := ar.pool.Query(context.Background(), queryStr, userId, count, from*count)
+	query, err := ar.DB.QueryContext(context.Background(), queryStr, userId, count, from*count)
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}
@@ -394,7 +390,7 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 			a.date_close, a.is_active, a.views, a.publisher_id, c.name
 		HAVING a.id = $1;
 	`
-	queryRow := ar.pool.QueryRow(context.Background(), queryStr, advertId, userId)
+	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId, userId)
 
 	var advert models.Advert
 	var advertPathImages []*string
@@ -404,11 +400,10 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
 
 	if err != nil {
-		switch err.Error() {
-		case "no rows in result set":
+		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
+		if res {
 			return nil, internalError.EmptyQuery
-
-		default:
+		} else {
 			return nil, internalError.GenInternalError(err)
 		}
 	}
@@ -424,23 +419,23 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 }
 
 func (ar *AdvtRepository) InsertFavorite(userId, advertId int64) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.ExecContext(context.Background(),
 		"INSERT INTO favorite(user_id, advert_id) VALUES ($1, $2);",
 		userId, advertId)
 	if err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -449,23 +444,23 @@ func (ar *AdvtRepository) InsertFavorite(userId, advertId int64) error {
 }
 
 func (ar *AdvtRepository) DeleteFavorite(userId, advertId int64) error {
-	tx, err := ar.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
-	_, err = tx.Exec(context.Background(),
+	_, err = tx.ExecContext(context.Background(),
 		"DELETE FROM favorite WHERE user_id = $1 AND advert_id = $2;",
 		userId, advertId)
 	if err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}

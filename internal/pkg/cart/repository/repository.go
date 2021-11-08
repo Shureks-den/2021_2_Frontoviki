@@ -2,35 +2,33 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"regexp"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/cart"
-
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type CartRepository struct {
-	pool *pgxpool.Pool
+	DB *sql.DB
 }
 
-func NewCartRepository(pool *pgxpool.Pool) cart.CartRepository {
+func NewCartRepository(DB *sql.DB) cart.CartRepository {
 	return &CartRepository{
-		pool: pool,
+		DB: DB,
 	}
 }
 
 func (cr *CartRepository) Select(userId int64, advertId int64) (*models.Cart, error) {
 	queryStr := "SELECT user_id, advert_id, amount FROM cart WHERE user_id = $1 AND advert_id = $2;"
-	query := cr.pool.QueryRow(context.Background(), queryStr, userId, advertId)
+	query := cr.DB.QueryRowContext(context.Background(), queryStr, userId, advertId)
 	var oneInCart models.Cart
 	err := query.Scan(&oneInCart.UserId, &oneInCart.AdvertId, &oneInCart.Amount)
 	if err != nil {
-		switch err.Error() {
-		case "no rows in result set":
+		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
+		if res {
 			return nil, internalError.EmptyQuery
-
-		default:
+		} else {
 			return nil, internalError.GenInternalError(err)
 		}
 	}
@@ -39,9 +37,9 @@ func (cr *CartRepository) Select(userId int64, advertId int64) (*models.Cart, er
 
 func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 	queryStr := "SELECT user_id, advert_id, amount FROM cart WHERE user_id = $1;"
-	query, err := cr.pool.Query(context.Background(), queryStr, userId)
+	query, err := cr.DB.QueryContext(context.Background(), queryStr, userId)
 	if err != nil {
-		internalError.GenInternalError(err)
+		return nil, internalError.GenInternalError(err)
 	}
 
 	defer query.Close()
@@ -51,7 +49,7 @@ func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 
 		err = query.Scan(&oneInCart.UserId, &oneInCart.AdvertId, &oneInCart.Amount)
 		if err != nil {
-			internalError.GenInternalError(err)
+			return nil, internalError.GenInternalError(err)
 		}
 
 		cart = append(cart, &oneInCart)
@@ -61,23 +59,23 @@ func (cr *CartRepository) SelectAll(userId int64) ([]*models.Cart, error) {
 }
 
 func (cr *CartRepository) Update(cart *models.Cart) error {
-	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	queryStr := "UPDATE cart SET amount = $3 WHERE user_id = $1 AND advert_id = $2;"
-	ct, err := tx.Exec(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
+	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
 
-	if ct.RowsAffected() == 0 || err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -86,23 +84,23 @@ func (cr *CartRepository) Update(cart *models.Cart) error {
 }
 
 func (cr *CartRepository) Insert(cart *models.Cart) error {
-	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		internalError.GenInternalError(err)
 	}
 
 	queryStr := "INSERT INTO cart (user_id, advert_id, amount) VALUES ($1, $2, $3);"
-	ct, err := tx.Exec(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
+	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
 
-	if ct.RowsAffected() == 0 || err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -111,23 +109,23 @@ func (cr *CartRepository) Insert(cart *models.Cart) error {
 }
 
 func (cr *CartRepository) Delete(cart *models.Cart) error {
-	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		internalError.GenInternalError(err)
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1 AND advert_id = $2;"
-	ct, err := tx.Exec(context.Background(), queryStr, cart.UserId, cart.AdvertId)
+	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId)
 
-	if ct.RowsAffected() == 0 || err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -136,28 +134,28 @@ func (cr *CartRepository) Delete(cart *models.Cart) error {
 }
 
 func (cr *CartRepository) DeleteAll(userId int64) error {
-	tx, err := cr.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		internalError.GenInternalError(err)
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1;"
-	ct, err := tx.Exec(context.Background(), queryStr, userId)
+	ct, err := tx.ExecContext(context.Background(), queryStr, userId)
 
 	if err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
 
-	if ct.RowsAffected() == 0 {
+	if ra, _ := ct.RowsAffected(); ra == 0 {
 		return internalError.EmptyQuery
 	}
 

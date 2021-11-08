@@ -44,3 +44,8 @@ docs
 
 # ignore logs
 logs
+
+#ignore docker files
+*docker*
+build
+*database.sql

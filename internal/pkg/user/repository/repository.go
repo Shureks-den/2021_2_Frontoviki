@@ -2,32 +2,30 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"regexp"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/user"
-
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type UserRepository struct {
-	pool *pgxpool.Pool
+	DB *sql.DB
 }
 
-func NewUserRepository(pool *pgxpool.Pool) user.UserRepository {
+func NewUserRepository(DB *sql.DB) user.UserRepository {
 	return &UserRepository{
-		pool: pool,
+		DB: DB,
 	}
 }
 
 func (ur *UserRepository) Insert(user *models.UserData) error {
-	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ur.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
-	row := tx.QueryRow(context.Background(),
+	row := tx.QueryRowContext(context.Background(),
 		"INSERT INTO users (email, password, created_at, name, surname, image, phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;",
 		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname, user.Image, user.Phone)
 
@@ -35,7 +33,7 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 	err = row.Scan(&id)
 
 	if err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
@@ -43,16 +41,16 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 		return internalError.GenInternalError(err)
 	}
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO rating_statistics(user_id) VALUES ($1);", id)
+	_, err = tx.ExecContext(context.Background(), "INSERT INTO rating_statistics(user_id) VALUES ($1);", id)
 	if err != nil {
-		rollbackError := tx.Rollback(context.Background())
+		rollbackError := tx.Rollback()
 		if rollbackError != nil {
 			return rollbackError
 		}
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}
@@ -62,16 +60,15 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 }
 
 func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) {
-	row := ur.pool.QueryRow(context.Background(),
+	row := ur.DB.QueryRowContext(context.Background(),
 		"SELECT id, email, phone, password, created_at, name, surname, image FROM users WHERE email = $1",
 		email)
 
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Email, &user.Phone, &user.Password, &user.CreatedAt,
 		&user.Name, &user.Surname, &user.Image); err != nil {
-		fmt.Println("email", err.Error())
-		switch err.Error() {
-		case "no rows in result set":
+		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
+		if res {
 			return nil, internalError.EmptyQuery
 		}
 		return nil, internalError.GenInternalError(err)
@@ -81,15 +78,14 @@ func (ur *UserRepository) SelectByEmail(email string) (*models.UserData, error) 
 }
 
 func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
-	row := ur.pool.QueryRow(context.Background(),
+	row := ur.DB.QueryRowContext(context.Background(),
 		"SELECT id, email, phone, password, created_at, name, surname, image FROM users WHERE id = $1",
 		userId)
-
 	user := models.UserData{}
 	if err := row.Scan(&user.Id, &user.Email, &user.Phone, &user.Password, &user.CreatedAt,
 		&user.Name, &user.Surname, &user.Image); err != nil {
-		switch err.Error() {
-		case "no rows in result set":
+		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
+		if res {
 			return nil, internalError.EmptyQuery
 		}
 		return nil, internalError.GenInternalError(err)
@@ -99,17 +95,17 @@ func (ur *UserRepository) SelectById(userId int64) (*models.UserData, error) {
 }
 
 func (ur *UserRepository) Update(user *models.UserData) error {
-	tx, err := ur.pool.BeginTx(context.Background(), pgx.TxOptions{})
+	tx, err := ur.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
-	ct, err := tx.Exec(context.Background(),
+	ct, err := tx.ExecContext(context.Background(),
 		"UPDATE users SET email = $2, password = $3, name = $4, surname = $5, image = $6, phone = $7 WHERE id = $1",
 		user.Id, user.Email, user.Password, user.Name, user.Surname, user.Image, user.Phone)
 
-	if ra := ct.RowsAffected(); ra != 1 || err != nil {
-		rollbackErr := tx.Rollback(context.Background())
+	if ra, _ := ct.RowsAffected(); ra != 1 || err != nil {
+		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
 		}
@@ -121,7 +117,7 @@ func (ur *UserRepository) Update(user *models.UserData) error {
 		return internalError.GenInternalError(err)
 	}
 
-	err = tx.Commit(context.Background())
+	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
 	}

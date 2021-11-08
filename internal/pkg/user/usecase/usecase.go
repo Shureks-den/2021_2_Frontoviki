@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"log"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -33,6 +34,8 @@ func (uu *UserUsecase) Create(userSU *models.UserSignUp) (*models.UserData, erro
 			return nil, internalError.AlreadyExist
 
 		default:
+			log.Fatal(err)
+
 			return nil, err
 		}
 	}

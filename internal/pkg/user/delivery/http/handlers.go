@@ -86,7 +86,6 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
 		return
 	}
-
 	user, servErr := uh.userUsecase.Create(&signUpUser)
 	if servErr != nil {
 		logger.Warnf("can not create user: %s", servErr.Error())
