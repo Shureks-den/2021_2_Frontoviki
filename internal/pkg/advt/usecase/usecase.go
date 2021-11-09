@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -122,6 +123,7 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 	}
 	advert.Images = imageUrls
 
+	fmt.Println(oldImages)
 	err = au.imageLoaderUsecase.RemoveAdvertImages(oldImages)
 	if err != nil {
 		return nil, err

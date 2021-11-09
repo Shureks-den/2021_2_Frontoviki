@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -91,10 +92,8 @@ func (sr *SearchRepository) SelectWithFilter(search *models.SearchFilter, from, 
 
 		advert.Images = make([]string, 0)
 		if images[1:len(images)-1] != "NULL" {
-			advert.Images = strings.Split(images, ",")
-			advert.Images[0] = advert.Images[0][1:]
-			last_image := &advert.Images[len(advert.Images)-1]
-			*last_image = (*last_image)[:len(*last_image)-1]
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
 		}
 
 		if len(advert.Images) == 0 {

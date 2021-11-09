@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -56,10 +57,8 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 
 		advert.Images = make([]string, 0)
 		if images[1:len(images)-1] != "NULL" {
-			advert.Images = strings.Split(images, ",")
-			advert.Images[0] = advert.Images[0][1:]
-			last_image := &advert.Images[len(advert.Images)-1]
-			*last_image = (*last_image)[:len(*last_image)-1]
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
 		}
 
 		if len(advert.Images) == 0 {
@@ -125,10 +124,8 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 
 	advert.Images = make([]string, 0)
 	if images[1:len(images)-1] != "NULL" {
-		advert.Images = strings.Split(images, ",")
-		advert.Images[0] = advert.Images[0][1:]
-		last_image := &advert.Images[len(advert.Images)-1]
-		*last_image = (*last_image)[:len(*last_image)-1]
+		advert.Images = strings.Split(images[1:len(images)-1], ",")
+		sort.Strings(advert.Images)
 	}
 
 	if len(advert.Images) == 0 {
@@ -274,10 +271,8 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 
 		advert.Images = make([]string, 0)
 		if images[1:len(images)-1] != "NULL" {
-			advert.Images = strings.Split(images, ",")
-			advert.Images[0] = advert.Images[0][1:]
-			last_image := &advert.Images[len(advert.Images)-1]
-			*last_image = (*last_image)[:len(*last_image)-1]
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
 		}
 
 		if len(advert.Images) == 0 {
@@ -326,10 +321,8 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 
 		advert.Images = make([]string, 0)
 		if images[1:len(images)-1] != "NULL" {
-			advert.Images = strings.Split(images, ",")
-			advert.Images[0] = advert.Images[0][1:]
-			last_image := &advert.Images[len(advert.Images)-1]
-			*last_image = (*last_image)[:len(*last_image)-1]
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
 		}
 
 		if len(advert.Images) == 0 {
@@ -374,10 +367,8 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 
 		advert.Images = make([]string, 0)
 		if images[1:len(images)-1] != "NULL" {
-			advert.Images = strings.Split(images, ",")
-			advert.Images[0] = advert.Images[0][1:]
-			last_image := &advert.Images[len(advert.Images)-1]
-			*last_image = (*last_image)[:len(*last_image)-1]
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
 		}
 
 		if len(advert.Images) == 0 {
@@ -420,10 +411,8 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 
 	advert.Images = make([]string, 0)
 	if images[1:len(images)-1] != "NULL" {
-		advert.Images = strings.Split(images, ",")
-		advert.Images[0] = advert.Images[0][1:]
-		last_image := &advert.Images[len(advert.Images)-1]
-		*last_image = (*last_image)[:len(*last_image)-1]
+		advert.Images = strings.Split(images[1:len(images)-1], ",")
+		sort.Strings(advert.Images)
 	}
 
 	if len(advert.Images) == 0 {
