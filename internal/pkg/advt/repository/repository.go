@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
@@ -42,22 +43,23 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 	defer rows.Close()
 
 	adverts := make([]*models.Advert, 0)
-	var advertPathImages []*string
 	for rows.Next() {
 		advert := &models.Advert{}
+		var images string
 
 		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
 
-		advert.Images = []string{}
-		for _, path := range advertPathImages {
-			if path != nil {
-				advert.Images = append(advert.Images, *path)
-			}
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images, ",")
+			advert.Images[0] = advert.Images[0][1:]
+			last_image := &advert.Images[len(advert.Images)-1]
+			*last_image = (*last_image)[:len(*last_image)-1]
 		}
 
 		if len(advert.Images) == 0 {
@@ -111,21 +113,26 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId)
 
 	var advert models.Advert
-	var advertPathImages []*string
+	var images string
 
 	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 
 	if err != nil {
 		return nil, internalError.EmptyQuery
 	}
 
-	advert.Images = []string{}
-	for _, path := range advertPathImages {
-		if path != nil {
-			advert.Images = append(advert.Images, *path)
-		}
+	advert.Images = make([]string, 0)
+	if images[1:len(images)-1] != "NULL" {
+		advert.Images = strings.Split(images, ",")
+		advert.Images[0] = advert.Images[0][1:]
+		last_image := &advert.Images[len(advert.Images)-1]
+		*last_image = (*last_image)[:len(*last_image)-1]
+	}
+
+	if len(advert.Images) == 0 {
+		advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
 	}
 
 	return &advert, nil
@@ -255,21 +262,22 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 	var adverts []*models.Advert
 	for rows.Next() {
 		var advert models.Advert
-		var advertPathImages []*string
+		var images string
 
 		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
 
-		advert.Images = []string{}
-		for _, path := range advertPathImages {
-			if path != nil {
-				advert.Images = append(advert.Images, *path)
-			}
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images, ",")
+			advert.Images[0] = advert.Images[0][1:]
+			last_image := &advert.Images[len(advert.Images)-1]
+			*last_image = (*last_image)[:len(*last_image)-1]
 		}
 
 		if len(advert.Images) == 0 {
@@ -306,21 +314,22 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 	adverts := make([]*models.Advert, 0)
 	for query.Next() {
 		var advert models.Advert
-		var advertPathImages []*string
+		var images string
 
 		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
 
-		advert.Images = []string{}
-		for _, path := range advertPathImages {
-			if path != nil {
-				advert.Images = append(advert.Images, *path)
-			}
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images, ",")
+			advert.Images[0] = advert.Images[0][1:]
+			last_image := &advert.Images[len(advert.Images)-1]
+			*last_image = (*last_image)[:len(*last_image)-1]
 		}
 
 		if len(advert.Images) == 0 {
@@ -353,21 +362,22 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 	adverts := make([]*models.Advert, 0)
 	for query.Next() {
 		var advert models.Advert
-		var advertPathImages []*string
+		var images string
 
 		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
 
-		advert.Images = []string{}
-		for _, path := range advertPathImages {
-			if path != nil {
-				advert.Images = append(advert.Images, *path)
-			}
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images, ",")
+			advert.Images[0] = advert.Images[0][1:]
+			last_image := &advert.Images[len(advert.Images)-1]
+			*last_image = (*last_image)[:len(*last_image)-1]
 		}
 
 		if len(advert.Images) == 0 {
@@ -393,11 +403,11 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId, userId)
 
 	var advert models.Advert
-	var advertPathImages []*string
+	var images string
 
 	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-		&advert.PublisherId, &advert.Category, &advertPathImages, &advert.Amount, &advert.IsNew)
+		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
 
 	if err != nil {
 		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
@@ -408,11 +418,16 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 		}
 	}
 
-	advert.Images = []string{}
-	for _, path := range advertPathImages {
-		if path != nil {
-			advert.Images = append(advert.Images, *path)
-		}
+	advert.Images = make([]string, 0)
+	if images[1:len(images)-1] != "NULL" {
+		advert.Images = strings.Split(images, ",")
+		advert.Images[0] = advert.Images[0][1:]
+		last_image := &advert.Images[len(advert.Images)-1]
+		*last_image = (*last_image)[:len(*last_image)-1]
+	}
+
+	if len(advert.Images) == 0 {
+		advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
 	}
 
 	return &advert, nil
