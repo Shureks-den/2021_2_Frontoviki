@@ -185,23 +185,50 @@ func (ar *AdvtRepository) Delete(advertId int64) error {
 	return nil
 }
 
-func (ar *AdvtRepository) EditImages(advertId int64, newImages []string) error {
+func (ar *AdvtRepository) DeleteImages(images []string, advertId int64) error {
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	for _, img_path := range images {
+		_, err = tx.ExecContext(context.Background(),
+			"DELETE FROM advert_image WHERE advert_id = $1 AND img_path LIKE $2;",
+			advertId, img_path)
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				return internalError.RollbackError
+			}
+			return internalError.GenInternalError(err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) InsertImages(advertId int64, newImages []string) error {
 	tx, err := ar.DB.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	// сначала очищаем все картинки у объявления
-	_, err = tx.ExecContext(context.Background(),
-		"DELETE FROM advert_image WHERE advert_id = $1;",
-		advertId)
-	if err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return internalError.RollbackError
-		}
-		return internalError.GenInternalError(err)
-	}
+	// _, err = tx.ExecContext(context.Background(),
+	// 	"DELETE FROM advert_image WHERE advert_id = $1;",
+	// 	advertId)
+	// if err != nil {
+	// 	rollbackErr := tx.Rollback()
+	// 	if rollbackErr != nil {
+	// 		return internalError.RollbackError
+	// 	}
+	// 	return internalError.GenInternalError(err)
+	// }
 
 	// вставляем в базу новые url картинок
 	for _, image := range newImages {

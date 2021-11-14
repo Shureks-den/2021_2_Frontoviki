@@ -98,7 +98,7 @@ func main() {
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
 	api.Use(middleware.LoggerMiddleware)
-	api.Use(middleware.CSRFMiddleWare())
+	//api.Use(middleware.CSRFMiddleWare())
 
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(sqlDB)

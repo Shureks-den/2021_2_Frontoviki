@@ -75,3 +75,7 @@ func NewPage(pageNumS string, countS string) (*Page, error) {
 
 	return &Page{PageNum: pageNum - 1, Count: count}, nil
 }
+
+type AdvertImages struct {
+	ImagesPath []string `json:"images"`
+}

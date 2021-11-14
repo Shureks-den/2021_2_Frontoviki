@@ -112,7 +112,8 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 		relativePath := r.URL.Path
 		contentType := r.Header.Get("Content-Type")
 
-		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/upload$", relativePath)
+		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/images$", relativePath)
+		isImageUpload = isImageUpload && (r.Method == "POST")
 
 		switch {
 		case relativePath == "/users/profile/upload", isImageUpload:

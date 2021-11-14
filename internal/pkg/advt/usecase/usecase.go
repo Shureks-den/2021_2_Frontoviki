@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -117,19 +116,37 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 	}
 
 	oldImages := advert.Images
-	err = au.advtRepository.EditImages(advertId, imageUrls)
+	err = au.advtRepository.InsertImages(advertId, imageUrls)
 	if err != nil {
 		return nil, err
 	}
-	advert.Images = imageUrls
+	advert.Images = append(oldImages, imageUrls...)
 
-	fmt.Println(oldImages)
-	err = au.imageLoaderUsecase.RemoveAdvertImages(oldImages)
-	if err != nil {
-		return nil, err
-	}
+	// err = au.imageLoaderUsecase.RemoveAdvertImages(oldImages)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return advert, nil
+}
+
+func (au *AdvtUsecase) RemoveImages(images []string, advertId, userId int64) error {
+	advert, err := au.advtRepository.SelectById(advertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId {
+		return internalError.Conflict
+	}
+
+	err = au.advtRepository.DeleteImages(images, advertId)
+	if err != nil {
+		return err
+	}
+
+	err = au.imageLoaderUsecase.RemoveAdvertImages(images)
+	return err
 }
 
 func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error) {

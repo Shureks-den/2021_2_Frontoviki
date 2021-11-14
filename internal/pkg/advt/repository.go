@@ -15,7 +15,8 @@ type AdvtRepository interface {
 	Update(newAdvert *models.Advert) error
 	Delete(advertId int64) error
 
-	EditImages(advertId int64, newImages []string) error
+	InsertImages(advertId int64, newImages []string) error
+	DeleteImages(images []string, advertId int64) error
 
 	SelectFavorite(userId, advertId int64) (*models.Advert, error)
 	InsertFavorite(userId, advertId int64) error

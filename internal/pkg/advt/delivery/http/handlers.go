@@ -47,7 +47,9 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
-	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+
+	s.Handle("/{id:[0-9]+}/images", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/{id:[0-9]+}/images", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveImageHandler))).Methods(http.MethodDelete, http.MethodOptions)
 
 	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
 
@@ -400,7 +402,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 // @Param images formData file true "Uploaded images"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertDetail{advert=models.Advert,salesman=models.Profile}}
 // @failure default {object} models.HttpError
-// @Router /adverts/{id}/upload [post]
+// @Router /adverts/{id}/image [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
@@ -462,6 +464,57 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
 	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
 	logger.Debug("image uploaded successfully")
+}
+
+// UploadImageHandler godoc
+// @Summary Upload images for advert
+// @Description Upload images for advert
+// @Tags advert
+// @Accept multipart/form-data
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Param images body models.AdvertImages true "Pathes to images"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/{id}/image [delete]
+func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	defer r.Body.Close()
+	images := &models.AdvertImages{}
+	err = json.NewDecoder(r.Body).Decode(&images)
+	if err != nil {
+		logger.Warnf("can not decode images: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.RemoveImages(images.ImagesPath, advertId, userId)
+	if err != nil {
+		logger.Warnf("can not delete images of %d advert: %s", advertId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "images removed successfully", nil))
 }
 
 // SalesmanPageHandler godoc

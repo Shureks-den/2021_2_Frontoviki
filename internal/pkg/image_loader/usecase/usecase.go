@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 	"mime/multipart"
+	"strconv"
 	"strings"
 	"time"
 	internalError "yula/internal/error"
@@ -38,9 +39,8 @@ func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir stri
 		return "", internalError.UnknownExtension
 	}
 
-	currentTime := time.Now()
-	avatarId := fmt.Sprintf("%d_%d_%d", currentTime.Minute(), currentTime.Second(), currentTime.Nanosecond())
-	filename := avatarId + "." + extension
+	timestamp := time.Now().UnixMicro()
+	filename := fmt.Sprintf("%s.%s", strconv.FormatInt(timestamp, 10), extension)
 
 	err := ilu.imageLoaderRepo.Insert(headerFile, dir, filename)
 	if err != nil {
