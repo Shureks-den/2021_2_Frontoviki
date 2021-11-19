@@ -45,7 +45,11 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
+<<<<<<< HEAD
 	github.com/hashicorp/hcl v1.0.0 // indirect
+=======
+	github.com/gorilla/websocket v1.4.2 // indirect
+>>>>>>> c20f4b9 (it doesnt work yet)
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgconn v1.10.0 // indirect
