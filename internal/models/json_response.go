@@ -89,3 +89,7 @@ type HttpBodyOrder struct {
 type HttpBodyCategories struct {
 	Categories []*Category `json:"categories"`
 }
+
+type HttpBodyChatHistory struct {
+	Messages []*Message `json:"messages"`
+}

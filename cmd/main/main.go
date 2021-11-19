@@ -37,6 +37,7 @@ import (
 	categoryRep "yula/internal/pkg/category/repository"
 	categoryUse "yula/internal/pkg/category/usecase"
 
+	chatHttp "yula/internal/pkg/chat/delivery"
 	metrics "yula/internal/pkg/metrics"
 	metricsHttp "yula/internal/pkg/metrics/delivery"
 
@@ -134,6 +135,7 @@ func main() {
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
+	chth := chatHttp.NewChatHandler()
 
 	sm := middleware.NewSessionMiddleware(su)
 
@@ -144,6 +146,7 @@ func main() {
 	serh.Routing(api)
 	cath.Routing(api)
 	middleware.Routing(api)
+	chth.Routing(api, sm)
 
 	port := config.Cfg.GetMainPort()
 	fmt.Printf("start serving ::%s\n", port)
