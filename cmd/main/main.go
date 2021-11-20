@@ -38,6 +38,8 @@ import (
 	categoryUse "yula/internal/pkg/category/usecase"
 
 	chatHttp "yula/internal/pkg/chat/delivery"
+	chatRep "yula/internal/pkg/chat/repository"
+	chatUse "yula/internal/pkg/chat/usecase"
 	metrics "yula/internal/pkg/metrics"
 	metricsHttp "yula/internal/pkg/metrics/delivery"
 
@@ -120,6 +122,7 @@ func main() {
 	cr := cartRep.NewCartRepository(sqlDB)
 	serr := srchRep.NewSearchRepository(sqlDB)
 	catr := categoryRep.NewCategoryRepository(sqlDB)
+	chr := chatRep.NewChatRepository(sqlDB)
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)
@@ -128,6 +131,7 @@ func main() {
 	cu := cartUse.NewCartUsecase(cr)
 	seru := srchUse.NewSearchUsecase(serr, ar)
 	catu := categoryUse.NewCategoryUsecase(catr)
+	chu := chatUse.NewChatUsecase(chr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
@@ -135,7 +139,7 @@ func main() {
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
-	chth := chatHttp.NewChatHandler()
+	chth := chatHttp.NewChatHandler(chu)
 
 	sm := middleware.NewSessionMiddleware(su)
 

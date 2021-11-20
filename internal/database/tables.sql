@@ -59,10 +59,10 @@ CREATE TABLE IF NOT EXISTS advert (
 	views int NOT NULL DEFAULT 0,
 	amount int NOT NULL DEFAULT 1,
 	is_new BOOLEAN NOT NULL DEFAULT TRUE,
-	
+
     publisher_id INT NOT NULL,
 	category_id INT NOT NULL,
-	
+
     FOREIGN KEY (publisher_id) REFERENCES users (id) ON DELETE CASCADE,
 	FOREIGN KEY (category_id) REFERENCES category (id) ON DELETE CASCADE
 );
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS advert (
 CREATE TABLE IF NOT EXISTS advert_image (
 	advert_id int NOT NULL,
 	img_path text UNIQUE NOT NULL,
-	
+
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS advert_image (
 CREATE TABLE IF NOT EXISTS favorite (
 	user_id int NOT NULL,
 	advert_id int NOT NULL,
-	
+
 	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS price_history (
 	advert_id int NOT NULL,
 	price int NOT NULL,
 	change_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	
+
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS cart (
 	user_id int NOT NULL,
 	advert_id int NOT NULL,
 	amount int NOT NULL,
-	
+
 	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS rating (
 	user_from int NOT NULL,
 	user_to int NOT NULL,
 	rate int NOT NULL,
-	
+
 	FOREIGN KEY (user_from) REFERENCES users (id) ON DELETE CASCADE,
 	FOREIGN KEY (user_to) REFERENCES users (id) ON DELETE CASCADE
 );
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS rating_statistics (
 	user_id int NOT NULL,
 	sum int NOT NULL DEFAULT 0,
 	count int NOT NULL DEFAULT 0,
-	
+
 	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
@@ -124,6 +124,27 @@ CREATE TABLE IF NOT EXISTS views_ (
 	count int NOT NULL DEFAULT 0,
 
 	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+	user_from int NOT NULL,
+	user_to int NOT NULL,
+	msg VARCHAR(255),
+
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+	FOREIGN KEY (user_from) REFERENCES users (id) ON DELETE RESTRICT,
+	FOREIGN KEY (user_to) REFERENCES users (id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS dialogs (
+	user1 int NOT NULL,
+	user2 int NOT NULL,
+
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+	FOREIGN KEY (user1) REFERENCES users (id) ON DELETE RESTRICT,
+	FOREIGN KEY (user2) REFERENCES users (id) ON DELETE RESTRICT
 );
 
 
