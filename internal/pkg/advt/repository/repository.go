@@ -78,7 +78,7 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 	}
 
 	queryStr := `INSERT INTO advert (name, description, category_id, publisher_id, latitude, longitude, location, price, amount, is_new) 
-				VALUES ($1, $2, (SELECT id FROM category WHERE name = $3), $4, $5, $6, $7, $8, $9, $10) RETURNING id;`
+				VALUES ($1, $2, (SELECT id FROM category WHERE lower(name) = lower($3)), $4, $5, $6, $7, $8, $9, $10) RETURNING id;`
 	query := ar.DB.QueryRowContext(context.Background(), queryStr,
 		advert.Name, advert.Description, advert.Category, advert.PublisherId,
 		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount, advert.IsNew)
@@ -141,7 +141,7 @@ func (ar *AdvtRepository) Update(newAdvert *models.Advert) error {
 		return internalError.GenInternalError(err)
 	}
 
-	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE c.name = $4), 
+	queryStr := `UPDATE advert set name = $2, description = $3, category_id = (SELECT c.id FROM category c WHERE lower(c.name) = lower($4)), 
 				location = $5, latitude = $6, longitude = $7, price = $8, is_active = $9, date_close = $10, 
 				amount = $11, is_new = $12 WHERE id = $1 RETURNING id;`
 	query := tx.QueryRowContext(context.Background(), queryStr, newAdvert.Id, newAdvert.Name, newAdvert.Description,
