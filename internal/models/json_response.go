@@ -93,3 +93,7 @@ type HttpBodyCategories struct {
 type HttpBodyChatHistory struct {
 	Messages []*Message `json:"messages"`
 }
+
+type HttpBodyDialogs struct {
+	Dialogs []*Dialog `json:"dialogs"`
+}
