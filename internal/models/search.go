@@ -9,8 +9,8 @@ import (
 
 const (
 	TimeDurationNone int64   = -1
-	LatitudeNone     float64 = 200
-	LongitudeNone    float64 = 200
+	LatitudeNone     float64 = -80
+	LongitudeNone    float64 = 80
 	RadiusNone       int64   = -1
 )
 
@@ -18,10 +18,10 @@ type SearchFilter struct {
 	Query        string    `valid:"type(string)"`
 	Category     string    `valid:"type(string),optional"`
 	Date         time.Time `valid:"-"`
-	TimeDuration int64     `valid:"in(1|3|7|30),optional"`
+	TimeDuration int64     `valid:"in(-1|1|3|7|30),optional"`
 	Latitude     float64   `valid:"latitude,optional"`
 	Longitude    float64   `valid:"longitude,optional"`
-	Radius       int64     `valid:"int"`
+	Radius       int64     `valid:"int,optional"`
 	SortingDate  bool      `valid:"optional"`
 	SortingName  bool      `valid:"optional"`
 }
