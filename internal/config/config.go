@@ -44,7 +44,11 @@ var (
 func argparse() (string, string, string) {
 	mode := flag.String("mode", "dev", "config mode")
 	filePath := flag.String("path", ".", "path to config file")
+
+	flag.Parse()
+
 	configName := fmt.Sprintf("config_%s", *mode)
+
 	return *mode, *filePath, configName
 }
 
