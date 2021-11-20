@@ -191,11 +191,20 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	advert, err := ah.advtUsecase.GetAdvert(advertId)
+	advert, err := ah.advtUsecase.GetAdvert(advertId, userId, true)
 	if err != nil {
 		logger.Warnf("can not get adv by advId: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	advert.Views, err = ah.advtUsecase.GetAdvertViews(advertId)
+	if err != nil {
+		logger.Warnf("can not get views: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return

@@ -21,4 +21,7 @@ type AdvtRepository interface {
 	SelectFavorite(userId, advertId int64) (*models.Advert, error)
 	InsertFavorite(userId, advertId int64) error
 	DeleteFavorite(userId, advertId int64) error
+
+	SelectViews(advertId int64) (int64, error)
+	UpdateViews(advertId int64) error
 }

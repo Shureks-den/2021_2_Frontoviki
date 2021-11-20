@@ -1,3 +1,4 @@
+-- DROP TABLE views_;
 -- DROP TABLE rating_statistics;
 -- DROP TABLE rating;
 -- DROP TABLE cart;
@@ -116,6 +117,13 @@ CREATE TABLE IF NOT EXISTS rating_statistics (
 	count int NOT NULL DEFAULT 0,
 	
 	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS views_ (
+	advert_id int NOT NULL,
+	count int NOT NULL DEFAULT 0,
+
+	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
 

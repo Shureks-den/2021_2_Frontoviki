@@ -84,7 +84,17 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		advert.Latitude, advert.Longitude, advert.Location, advert.Price, advert.Amount, advert.IsNew)
 
 	if err := query.Scan(&advert.Id); err != nil {
-		fmt.Println(err.Error())
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	// вставляем в таблицу просмотров id созданного объявления
+	queryStr = "INSERT INTO views_ (advert_id) VALUES ($1);"
+	_, err = ar.DB.Exec(queryStr, advert.Id)
+	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -483,6 +493,39 @@ func (ar *AdvtRepository) DeleteFavorite(userId, advertId int64) error {
 	_, err = tx.ExecContext(context.Background(),
 		"DELETE FROM favorite WHERE user_id = $1 AND advert_id = $2;",
 		userId, advertId)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) SelectViews(advertId int64) (int64, error) {
+	queryStr := "SELECT count FROM views_ WHERE advert_id = $1;"
+	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId)
+
+	var views int64
+	err := queryRow.Scan(&views)
+	return views, err
+}
+
+func (ar *AdvtRepository) UpdateViews(advertId int64) error {
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	_, err = tx.ExecContext(context.Background(),
+		"UPDATE views_ SET count = count + 1 WHERE advert_id = $1;", advertId)
 	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
