@@ -84,9 +84,14 @@ func getPostgres(dsn string) *sql.DB {
 func main() {
 	logger := logging.GetLogger()
 
-	cnfg := config.NewConfig()
+	if err := config.LoadConfig(); err != nil {
+		logger.Errorf("error with load config: %s", err.Error())
+		return
+	}
 
-	sqlDB := getPostgres(cnfg.DbConfig.DatabaseUrl)
+	// cnfg := config.NewConfig()
+
+	sqlDB := getPostgres(config.Cfg.GetPostgresUrl())
 	defer sqlDB.Close()
 
 	r := mux.NewRouter()
@@ -104,7 +109,7 @@ func main() {
 	ar := advtRep.NewAdvtRepository(sqlDB)
 	ur := userRep.NewUserRepository(sqlDB)
 	rr := userRep.NewRatingRepository(sqlDB)
-	sr := sessRep.NewSessionRepository(&cnfg.TarantoolCfg)
+	sr := sessRep.NewSessionRepository(config.Cfg.GetTarantoolCfg())
 	cr := cartRep.NewCartRepository(sqlDB)
 	serr := srchRep.NewSearchRepository(sqlDB)
 	catr := categoryRep.NewCategoryRepository(sqlDB)
@@ -134,13 +139,16 @@ func main() {
 	cath.Routing(api)
 	middleware.Routing(api)
 
-	//http
-	fmt.Println("start serving ::8080")
-	error := http.ListenAndServe(":8080", r)
+	port := config.Cfg.GetMainPort()
+	fmt.Printf("start serving ::%s\n", port)
 
-	// //https
-	// fmt.Println("start serving ::5000")
-	// error := http.ListenAndServeTLS(":5000", "certificate.crt", "key.key", r)
+	var error error
+	secure := config.Cfg.IsSecure()
+	if secure {
+		error = http.ListenAndServeTLS(fmt.Sprintf(":%s", port), "certificate.crt", "key.key", r)
+	} else {
+		error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
+	}
 
 	logger.Errorf("http serve error %v", error)
 }

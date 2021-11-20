@@ -49,3 +49,6 @@ logs
 *docker*
 build
 *database.sql
+
+# config files
+config*.yml
