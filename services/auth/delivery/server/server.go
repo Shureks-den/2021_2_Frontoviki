@@ -36,7 +36,7 @@ func (server *AuthServer) NewGRPCServer(listenUrl string) error {
 	}
 
 	serv := grpc.NewServer()
-	proto.RegisterAuthCheckerServer(serv, server)
+	proto.RegisterAuthServer(serv, server)
 
 	server.logger.Info("Start session service\n")
 	return serv.Serve(lis)
@@ -70,7 +70,7 @@ func (s *AuthServer) Create(ctx context.Context, userID *proto.UserID) (*proto.R
 	return &proto.Result{
 		UserID:    res.UserId,
 		SessionID: res.Value,
-		ExpireAt:  prototime.New(res.ExpiresAt),
+		ExpireAt:  timestamppb.New(res.ExpiresAt),
 	}, nil
 }
 

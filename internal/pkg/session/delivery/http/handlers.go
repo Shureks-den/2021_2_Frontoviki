@@ -21,11 +21,11 @@ import (
 )
 
 type SessionHandler struct {
-	sessionUsecase proto.AuthServerClient
+	sessionUsecase proto.AuthClient
 	userUsecase    user.UserUsecase
 }
 
-func NewSessionHandler(sessionUsecase proto.AuthServerClient, userUsecase user.UserUsecase) *SessionHandler {
+func NewSessionHandler(sessionUsecase proto.AuthClient, userUsecase user.UserUsecase) *SessionHandler {
 	return &SessionHandler{
 		sessionUsecase: sessionUsecase, userUsecase: userUsecase,
 	}

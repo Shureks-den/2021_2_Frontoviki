@@ -14,158 +14,156 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// AuthServerClient is the client API for AuthServer service.
+// AuthClient is the client API for Auth service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type AuthServerClient interface {
+type AuthClient interface {
 	Check(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Result, error)
 	Create(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*Result, error)
 	Delete(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Nothing, error)
 }
 
-type authServerClient struct {
+type authClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewAuthServerClient(cc grpc.ClientConnInterface) AuthServerClient {
-	return &authServerClient{cc}
+func NewAuthClient(cc grpc.ClientConnInterface) AuthClient {
+	return &authClient{cc}
 }
 
-func (c *authServerClient) Check(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Result, error) {
+func (c *authClient) Check(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Result, error) {
 	out := new(Result)
-	err := c.cc.Invoke(ctx, "/auth.AuthServer/Check", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/auth.Auth/Check", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServerClient) Create(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*Result, error) {
+func (c *authClient) Create(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*Result, error) {
 	out := new(Result)
-	err := c.cc.Invoke(ctx, "/auth.AuthServer/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/auth.Auth/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServerClient) Delete(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *authClient) Delete(ctx context.Context, in *SessionID, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
-	err := c.cc.Invoke(ctx, "/auth.AuthServer/Delete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/auth.Auth/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// AuthServerServer is the server API for AuthServer service.
-// All implementations must embed UnimplementedAuthServerServer
+// AuthServer is the server API for Auth service.
+// All implementations should embed UnimplementedAuthServer
 // for forward compatibility
-type AuthServerServer interface {
+type AuthServer interface {
 	Check(context.Context, *SessionID) (*Result, error)
 	Create(context.Context, *UserID) (*Result, error)
 	Delete(context.Context, *SessionID) (*Nothing, error)
-	mustEmbedUnimplementedAuthServerServer()
 }
 
-// UnimplementedAuthServerServer must be embedded to have forward compatible implementations.
-type UnimplementedAuthServerServer struct {
+// UnimplementedAuthServer should be embedded to have forward compatible implementations.
+type UnimplementedAuthServer struct {
 }
 
-func (UnimplementedAuthServerServer) Check(context.Context, *SessionID) (*Result, error) {
+func (UnimplementedAuthServer) Check(context.Context, *SessionID) (*Result, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
-func (UnimplementedAuthServerServer) Create(context.Context, *UserID) (*Result, error) {
+func (UnimplementedAuthServer) Create(context.Context, *UserID) (*Result, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedAuthServerServer) Delete(context.Context, *SessionID) (*Nothing, error) {
+func (UnimplementedAuthServer) Delete(context.Context, *SessionID) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedAuthServerServer) mustEmbedUnimplementedAuthServerServer() {}
 
-// UnsafeAuthServerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to AuthServerServer will
+// UnsafeAuthServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthServer will
 // result in compilation errors.
-type UnsafeAuthServerServer interface {
-	mustEmbedUnimplementedAuthServerServer()
+type UnsafeAuthServer interface {
+	mustEmbedUnimplementedAuthServer()
 }
 
-func RegisterAuthServerServer(s grpc.ServiceRegistrar, srv AuthServerServer) {
-	s.RegisterService(&AuthServer_ServiceDesc, srv)
+func RegisterAuthServer(s grpc.ServiceRegistrar, srv AuthServer) {
+	s.RegisterService(&Auth_ServiceDesc, srv)
 }
 
-func _AuthServer_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Auth_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServerServer).Check(ctx, in)
+		return srv.(AuthServer).Check(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.AuthServer/Check",
+		FullMethod: "/auth.Auth/Check",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServerServer).Check(ctx, req.(*SessionID))
+		return srv.(AuthServer).Check(ctx, req.(*SessionID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthServer_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Auth_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UserID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServerServer).Create(ctx, in)
+		return srv.(AuthServer).Create(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.AuthServer/Create",
+		FullMethod: "/auth.Auth/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServerServer).Create(ctx, req.(*UserID))
+		return srv.(AuthServer).Create(ctx, req.(*UserID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthServer_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Auth_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServerServer).Delete(ctx, in)
+		return srv.(AuthServer).Delete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/auth.AuthServer/Delete",
+		FullMethod: "/auth.Auth/Delete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServerServer).Delete(ctx, req.(*SessionID))
+		return srv.(AuthServer).Delete(ctx, req.(*SessionID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// AuthServer_ServiceDesc is the grpc.ServiceDesc for AuthServer service.
+// Auth_ServiceDesc is the grpc.ServiceDesc for Auth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var AuthServer_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "auth.AuthServer",
-	HandlerType: (*AuthServerServer)(nil),
+var Auth_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "auth.Auth",
+	HandlerType: (*AuthServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Check",
-			Handler:    _AuthServer_Check_Handler,
+			Handler:    _Auth_Check_Handler,
 		},
 		{
 			MethodName: "Create",
-			Handler:    _AuthServer_Create_Handler,
+			Handler:    _Auth_Create_Handler,
 		},
 		{
 			MethodName: "Delete",
-			Handler:    _AuthServer_Delete_Handler,
+			Handler:    _Auth_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

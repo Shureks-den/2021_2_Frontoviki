@@ -25,7 +25,7 @@ message Nothing {
   bool dummy = 1;
 }
 
-service AuthServer {
+service Auth {
   rpc Check(SessionID) returns (Result);
   rpc Create(UserID) returns (Result);
   rpc Delete(SessionID) returns (Nothing);

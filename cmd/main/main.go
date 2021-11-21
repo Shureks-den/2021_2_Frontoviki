@@ -8,6 +8,7 @@ import (
 	"yula/internal/config"
 
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/sirupsen/logrus"
 
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
@@ -47,6 +48,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
+	server "yula/services/auth/delivery/server"
 	proto "yula/services/proto/generated"
 
 	"google.golang.org/grpc"
@@ -119,7 +121,6 @@ func main() {
 	api.Use(middleware.ContentTypeMiddleware)
 	api.Use(middleware.LoggerMiddleware)
 	//api.Use(middleware.CSRFMiddleWare())
-
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(sqlDB)
 	ur := userRep.NewUserRepository(sqlDB)
@@ -151,7 +152,7 @@ func main() {
 	}
 	defer grpcConn.Close()
 
-	sh := sessHttp.NewSessionHandler(proto.NewAuthServerClient(grpcConn), uu)
+	sh := sessHttp.NewSessionHandler(proto.NewAuthClient(grpcConn), uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
@@ -167,6 +168,9 @@ func main() {
 	cath.Routing(api)
 	middleware.Routing(api)
 	chth.Routing(api, sm)
+
+	grpcServ := server.NewAuthGRPCServer(logrus.New(), su)
+	go grpcServ.NewGRPCServer("127.0.0.1:8180")
 
 	port := config.Cfg.GetMainPort()
 	fmt.Printf("start serving ::%s\n", port)
