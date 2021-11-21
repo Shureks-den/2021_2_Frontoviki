@@ -18,8 +18,8 @@ import (
 
 	"yula/internal/pkg/middleware"
 	sessHttp "yula/internal/pkg/session/delivery/http"
-	sessRep "yula/internal/pkg/session/repository"
-	sessUse "yula/internal/pkg/session/usecase"
+	sessRep "yula/services/auth/repository"
+	sessUse "yula/services/auth/usecase"
 
 	advtHttp "yula/internal/pkg/advt/delivery/http"
 	advtRep "yula/internal/pkg/advt/repository"
@@ -46,6 +46,12 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+
+	proto "yula/services/proto/generated"
+
+	"google.golang.org/grpc"
+
+	// _ "yula/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -135,7 +141,17 @@ func main() {
 
 	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
-	sh := sessHttp.NewSessionHandler(su, uu)
+
+	grpcConn, err := grpc.Dial(
+		"127.0.0.1:8180",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcConn.Close()
+
+	sh := sessHttp.NewSessionHandler(proto.NewAuthServerClient(grpcConn), uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
