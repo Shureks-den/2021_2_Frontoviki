@@ -1,0 +1,35 @@
+groups:
+  - name: default
+    rules:
+    - alert: InternalServerError
+      expr: increase(hits{status="500"}[1m]) > 0
+      for: 1s
+      labels:
+        severity: critical
+      annotations:
+        summary: "path {{ $labels.path }} returned status 500"
+        description: "{{ $labels.path }} of job {{ $labels.job }} returned status {{ $labels.status }}"
+    - alert: Bad Gateway
+      expr: increase(hits{status="502"}[1m]) > 0
+      for: 1s
+      labels:
+        severity: critical
+      annotations:
+        summary: "path {{ $labels.path }} returned status 502"
+        description: "{{ $labels.path }} of job {{ $labels.job }} returned status {{ $labels.status }}"
+    - alert: Service Unavailable
+      expr: increase(hits{status="503"}[1m]) > 0
+      for: 1s
+      labels:
+        severity: critical
+      annotations:
+        summary: "path {{ $labels.path }} returned status 503"
+        description: "{{ $labels.path }} of job {{ $labels.job }} returned status {{ $labels.status }}"
+    - alert: Gateway Timeout
+      expr: increase(hits{status="504"}[1m]) > 0
+      for: 1s
+      labels:
+        severity: critical
+      annotations:
+        summary: "path {{ $labels.path }} returned status 504"
+        description: "{{ $labels.path }} of job {{ $labels.job }} returned status {{ $labels.status }}"

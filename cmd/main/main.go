@@ -37,11 +37,12 @@ import (
 	categoryRep "yula/internal/pkg/category/repository"
 	categoryUse "yula/internal/pkg/category/usecase"
 
+	metrics "yula/internal/pkg/metrics"
+	metricsHttp "yula/internal/pkg/metrics/delivery"
+
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-
-	// _ "yula/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -99,6 +100,11 @@ func main() {
 	r.PathPrefix("/swagger").HandlerFunc(httpSwagger.WrapHandler)
 
 	api := r.PathPrefix("").Subrouter()
+
+	// ставим мидлварину с метриками
+	m := metrics.NewMetrics(r)
+	mmw := metricsHttp.NewMetricsMiddleware(m)
+	r.Use(mmw.ScanMetrics)
 
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
