@@ -18,31 +18,34 @@ func NewChatUsecase(repo chat.ChatRepository) chat.ChatUsecase {
 }
 
 func (cu *ChatUsecase) Create(message *models.Message) error {
-	_, err := cu.chatRepo.SelectDialog(message.IdFrom, message.IdTo)
+	_, err := cu.chatRepo.SelectDialog(message.IdFrom, message.IdTo, message.IdAdv)
 	if err == internalError.EmptyQuery {
 		dialog := &models.Dialog{
-			Id1: message.IdFrom,
-			Id2: message.IdTo,
+			Id1:   message.IdFrom,
+			Id2:   message.IdTo,
+			IdAdv: message.IdAdv,
 		}
 		cu.chatRepo.InsertDialog(dialog)
 	}
-	_, err = cu.chatRepo.SelectDialog(message.IdTo, message.IdFrom)
+	_, err = cu.chatRepo.SelectDialog(message.IdTo, message.IdFrom, message.IdAdv)
 	if err == internalError.EmptyQuery {
 		dialog := &models.Dialog{
-			Id1: message.IdTo,
-			Id2: message.IdFrom,
+			Id1:   message.IdTo,
+			Id2:   message.IdFrom,
+			IdAdv: message.IdAdv,
 		}
 		cu.chatRepo.InsertDialog(dialog)
 	}
 	return cu.chatRepo.InsertMessage(message)
 }
 
-func (cu *ChatUsecase) Clear(idFrom int64, idTo int64) error {
-	dialog, err := cu.chatRepo.SelectDialog(idFrom, idTo)
+func (cu *ChatUsecase) Clear(idFrom int64, idTo int64, idAdv int64) error {
+	dialog, err := cu.chatRepo.SelectDialog(idFrom, idTo, idAdv)
 	if dialog != nil {
 		dialog := &models.Dialog{
-			Id1: idFrom,
-			Id2: idTo,
+			Id1:   idFrom,
+			Id2:   idTo,
+			IdAdv: idAdv,
 		}
 		cu.chatRepo.DeleteDialog(dialog)
 	}
@@ -51,13 +54,13 @@ func (cu *ChatUsecase) Clear(idFrom int64, idTo int64) error {
 		return err
 	}
 
-	dialog, err = cu.chatRepo.SelectDialog(idTo, idFrom)
+	dialog, err = cu.chatRepo.SelectDialog(idTo, idFrom, idAdv)
 	if dialog == nil && err == internalError.EmptyQuery {
-		err = cu.chatRepo.DeleteMessages(idFrom, idTo)
+		err = cu.chatRepo.DeleteMessages(idFrom, idTo, idAdv)
 		if err != nil {
 			return err
 		}
-		cu.chatRepo.DeleteMessages(idTo, idFrom)
+		cu.chatRepo.DeleteMessages(idTo, idFrom, idAdv)
 		if err != nil {
 			return err
 		}
@@ -66,12 +69,12 @@ func (cu *ChatUsecase) Clear(idFrom int64, idTo int64) error {
 	return err
 }
 
-func (cu *ChatUsecase) GetHistory(idFrom int64, idTo int64, offset int64, limit int64) ([]*models.Message, error) {
-	_, err := cu.chatRepo.SelectDialog(idFrom, idTo)
+func (cu *ChatUsecase) GetHistory(idFrom int64, idTo int64, idAdv int64, offset int64, limit int64) ([]*models.Message, error) {
+	_, err := cu.chatRepo.SelectDialog(idFrom, idTo, idAdv)
 	if err == internalError.EmptyQuery {
 		return nil, internalError.NotExist
 	}
-	return cu.chatRepo.SelectMessages(idFrom, idTo, offset, limit)
+	return cu.chatRepo.SelectMessages(idFrom, idTo, idAdv, offset, limit)
 }
 
 func (cu *ChatUsecase) GetDialogs(idFrom int64) ([]*models.Dialog, error) {

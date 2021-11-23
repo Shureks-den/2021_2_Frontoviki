@@ -13,6 +13,7 @@ require (
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/gorilla/csrf v1.7.1
+	github.com/gorilla/websocket v1.4.2
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jaswdr/faker v1.8.0
 	github.com/microcosm-cc/bluemonday v1.0.16
@@ -21,7 +22,6 @@ require (
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/http-swagger v1.1.2
-	github.com/swaggo/swag v1.7.3
 	github.com/tarantool/go-tarantool v0.0.0-20210330210617-56fe55c5fa5c
 	github.com/urfave/negroni v1.0.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0
@@ -45,11 +45,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
-<<<<<<< HEAD
 	github.com/hashicorp/hcl v1.0.0 // indirect
-=======
-	github.com/gorilla/websocket v1.4.2 // indirect
->>>>>>> c20f4b9 (it doesnt work yet)
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgconn v1.10.0 // indirect
@@ -78,6 +74,7 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/swaggo/files v0.0.0-20190704085106-630677cd5c14 // indirect
+	github.com/swaggo/swag v1.7.3 // indirect
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb // indirect
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.7 // indirect
