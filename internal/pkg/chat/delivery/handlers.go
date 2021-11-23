@@ -1,12 +1,12 @@
 package delivery
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"yula/internal/models"
-	"yula/internal/pkg/chat"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 
@@ -14,12 +14,14 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
+	proto "yula/proto/generated/chat"
+
 	internalError "yula/internal/error"
 )
 
 var (
 	logger       = logging.GetLogger()
-	chatSessions = map[string]*ChatSession{} // to_string(idFrom) + "->" + to_string(idTo) => conn
+	chatSessions = map[string]*ChatSession{} // to_string(idFrom) + "->" + to_string(idTo) + ":" + to_string(idAdv) => conn
 )
 
 type ChatSession struct {
@@ -31,10 +33,10 @@ type ChatSession struct {
 }
 
 type ChatHandler struct {
-	chatUsecase chat.ChatUsecase
+	chatUsecase proto.ChatClient
 }
 
-func NewChatHandler(cu chat.ChatUsecase) *ChatHandler {
+func NewChatHandler(cu proto.ChatClient) *ChatHandler {
 	return &ChatHandler{
 		chatUsecase: cu,
 	}
@@ -109,13 +111,12 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 			return
 		}
 
-		message := &models.Message{
+		ch.chatUsecase.Create(context.Background(), &proto.Message{
 			IdFrom: session.idFrom,
 			IdTo:   session.idTo,
 			IdAdv:  session.idAdv,
 			Msg:    string(msg),
-		}
-		ch.chatUsecase.Create(message)
+		})
 
 		key := fmt.Sprintf("%d->%d:%d", session.idTo, session.idFrom, session.idAdv)
 		to := chatSessions[key]
@@ -159,7 +160,29 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	messages, err := ch.chatUsecase.GetHistory(idFrom, idTo, idAdv, page.PageNum*page.Count, page.Count)
+	protomessages, err := ch.chatUsecase.GetHistory(context.Background(), &proto.GetHistoryArg{
+		DI: &proto.DialogIdentifier{
+			IdFrom: idFrom,
+			IdTo:   idTo,
+			IdAdv:  idAdv,
+		},
+		FP: &proto.FilterParams{
+			Offset: page.PageNum * page.Count,
+			Limit:  page.Count,
+		},
+	})
+
+	var messages []*models.Message
+	for _, message := range protomessages.M {
+		messages = append(messages, &models.Message{
+			IdFrom:    message.IdFrom,
+			IdTo:      message.IdTo,
+			IdAdv:     message.IdAdv,
+			Msg:       message.Msg,
+			CreatedAt: message.CreatedAt.AsTime(),
+		})
+	}
+
 	if err != nil {
 		logger.Warnf("get history chat error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -190,7 +213,12 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ch.chatUsecase.Clear(idFrom, idTo, idAdv)
+	_, err = ch.chatUsecase.Clear(context.Background(), &proto.DialogIdentifier{
+		IdFrom: idFrom,
+		IdTo:   idTo,
+		IdAdv:  idAdv,
+	})
+
 	if err != nil {
 		logger.Warnf("clear chat error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -217,7 +245,7 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	dialogs, err := ch.chatUsecase.GetDialogs(idFrom)
+	protodialogs, err := ch.chatUsecase.GetDialogs(context.Background(), &proto.UserIdentifier{IdFrom: idFrom})
 	if err != nil {
 		logger.Warnf("get dialogs error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -225,6 +253,16 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
+	}
+
+	var dialogs []*models.Dialog
+	for _, dialog := range protodialogs.D {
+		dialogs = append(dialogs, &models.Dialog{
+			Id1:       dialog.Id1,
+			Id2:       dialog.Id2,
+			IdAdv:     dialog.IdAdv,
+			CreatedAt: dialog.CreatedAt.AsTime(),
+		})
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -5,7 +5,9 @@ import "google/protobuf/timestamp.proto";
 package auth;
 option go_package = "./.;auth";
 
-// go:generate protoc --go_out=plugins=grpc:. *.proto
+// protoc --go_out=./generated/ --go_opt=paths=source_relative \
+//      --go-grpc_out=./generated/ --go-grpc_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false \
+//     ./session.proto
 
 message UserID {
   int64 ID = 1;

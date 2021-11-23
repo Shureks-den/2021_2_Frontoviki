@@ -8,8 +8,8 @@ import (
 	"yula/internal/models"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
-	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
+	session "yula/services/auth"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
