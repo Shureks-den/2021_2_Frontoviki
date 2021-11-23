@@ -39,17 +39,20 @@ import (
 	categoryUse "yula/internal/pkg/category/usecase"
 
 	chatHttp "yula/internal/pkg/chat/delivery"
-	chatRep "yula/internal/pkg/chat/repository"
-	chatUse "yula/internal/pkg/chat/usecase"
 	metrics "yula/internal/pkg/metrics"
 	metricsHttp "yula/internal/pkg/metrics/delivery"
+	chatRep "yula/services/chat/repository"
+	chatUse "yula/services/chat/usecase"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
-	server "yula/services/auth/delivery/server"
-	proto "yula/services/proto/generated"
+	authProto "yula/proto/generated/auth"
+	chatProto "yula/proto/generated/chat"
+
+	authServer "yula/services/auth/delivery"
+	chatServer "yula/services/chat/delivery"
 
 	"google.golang.org/grpc"
 
@@ -143,20 +146,29 @@ func main() {
 	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
 
-	grpcConn, err := grpc.Dial(
+	grpcAuthClient, err := grpc.Dial(
 		"127.0.0.1:8180",
 		grpc.WithInsecure(),
 	)
 	if err != nil {
 		log.Fatal("cant open grpc conn")
 	}
-	defer grpcConn.Close()
+	defer grpcAuthClient.Close()
 
-	sh := sessHttp.NewSessionHandler(proto.NewAuthClient(grpcConn), uu)
+	grpcChatClient, err := grpc.Dial(
+		"127.0.0.1:8280",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcChatClient.Close()
+
+	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 	cath := categoryHttp.NewCategoryHandler(catu)
-	chth := chatHttp.NewChatHandler(chu)
+	chth := chatHttp.NewChatHandler(chatProto.NewChatClient(grpcChatClient))
 
 	sm := middleware.NewSessionMiddleware(su)
 
@@ -169,8 +181,11 @@ func main() {
 	middleware.Routing(api)
 	chth.Routing(api, sm)
 
-	grpcServ := server.NewAuthGRPCServer(logrus.New(), su)
-	go grpcServ.NewGRPCServer("127.0.0.1:8180")
+	grpcAuth := authServer.NewAuthGRPCServer(logrus.New(), su)
+	go grpcAuth.NewGRPCServer("127.0.0.1:8180")
+
+	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
+	go grpcChat.NewGRPCServer("127.0.0.1:8280")
 
 	port := config.Cfg.GetMainPort()
 	fmt.Printf("start serving ::%s\n", port)

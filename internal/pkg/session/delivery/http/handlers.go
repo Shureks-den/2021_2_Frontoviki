@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 	internalError "yula/internal/error"
-	auth "yula/services/proto/generated"
-	proto "yula/services/proto/generated"
+	auth "yula/proto/generated/auth"
 
 	"yula/internal/models"
 	"yula/internal/pkg/logging"
@@ -21,11 +20,11 @@ import (
 )
 
 type SessionHandler struct {
-	sessionUsecase proto.AuthClient
+	sessionUsecase auth.AuthClient
 	userUsecase    user.UserUsecase
 }
 
-func NewSessionHandler(sessionUsecase proto.AuthClient, userUsecase user.UserUsecase) *SessionHandler {
+func NewSessionHandler(sessionUsecase auth.AuthClient, userUsecase user.UserUsecase) *SessionHandler {
 	return &SessionHandler{
 		sessionUsecase: sessionUsecase, userUsecase: userUsecase,
 	}

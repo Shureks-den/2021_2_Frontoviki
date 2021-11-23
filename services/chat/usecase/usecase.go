@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"yula/internal/models"
-	"yula/internal/pkg/chat"
+	"yula/services/chat"
 
 	internalError "yula/internal/error"
 )

@@ -10,7 +10,7 @@ import (
 	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	"yula/internal/pkg/session"
+	session "yula/services/auth"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/csrf"

@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"net"
+	proto "yula/proto/generated/auth"
 	sessions "yula/services/auth"
-	proto "yula/services/proto/generated"
 
 	"github.com/sirupsen/logrus"
 
@@ -27,10 +27,9 @@ func NewAuthGRPCServer(logger *logrus.Logger, su sessions.SessionUsecase) *AuthS
 
 func (server *AuthServer) NewGRPCServer(listenUrl string) error {
 	lis, err := net.Listen("tcp", listenUrl)
-	server.logger.Infof("my listen url %s \n", listenUrl)
+	server.logger.Infof("AUTH: my listen url %s \n", listenUrl)
 
 	if err != nil {
-		server.logger.Errorf("AUTHSERVER\n")
 		server.logger.Errorf("can not listen url: %s err :%v\n", listenUrl, err)
 		return err
 	}
@@ -45,7 +44,6 @@ func (server *AuthServer) NewGRPCServer(listenUrl string) error {
 func (s *AuthServer) Check(ctx context.Context, sessionID *proto.SessionID) (*proto.Result, error) {
 	res, err := s.su.Check(sessionID.ID)
 	if err != nil {
-		s.logger.Errorf("AUTHSERVER\n")
 		s.logger.Errorf("can not check session with sessionID = %s, err = %v", sessionID.ID,
 			err)
 		return nil, err
@@ -61,7 +59,6 @@ func (s *AuthServer) Check(ctx context.Context, sessionID *proto.SessionID) (*pr
 func (s *AuthServer) Create(ctx context.Context, userID *proto.UserID) (*proto.Result, error) {
 	res, err := s.su.Create(userID.ID)
 	if err != nil {
-		s.logger.Errorf("AUTHSERVER\n")
 		s.logger.Errorf("can not create session with userID = %d, err = %v", userID.ID,
 			err)
 		return nil, err
@@ -77,7 +74,6 @@ func (s *AuthServer) Create(ctx context.Context, userID *proto.UserID) (*proto.R
 func (s *AuthServer) Delete(ctx context.Context, sessionID *proto.SessionID) (*proto.Nothing, error) {
 	err := s.su.Delete(sessionID.ID)
 	if err != nil {
-		s.logger.Errorf("AUTHSERVER\n")
 		s.logger.Errorf("can not delete session with sessionID = %s, err = %v", sessionID.ID,
 			err)
 		return &proto.Nothing{Dummy: false}, err

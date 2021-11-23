@@ -6,7 +6,7 @@ import (
 	"regexp"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	"yula/internal/pkg/chat"
+	"yula/services/chat"
 )
 
 type ChatRepository struct {
