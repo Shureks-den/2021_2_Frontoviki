@@ -18,18 +18,15 @@ func TestSelectCategories(t *testing.T) {
 	repo := &CategoryRepository{
 		DB: db,
 	}
-	rows := sqlmock.
-		NewRows([]string{"name"})
+	rows := sqlmock.NewRows([]string{"name"})
 	expect := []*models.Category{
-		{"aboba"},
+		{Name: "aboba"},
 	}
 	for _, item := range expect {
 		rows = rows.AddRow(item.Name)
 	}
 
-	mock.
-		ExpectQuery("SELECT").
-		WillReturnRows(rows)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	_, err = repo.SelectCategories()
 	assert.Nil(t, err)

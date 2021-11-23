@@ -1,119 +1,82 @@
 package repository
 
 import (
+	"database/sql/driver"
 	"fmt"
-	"math/rand"
-	"os"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
-
-	"yula/internal/config"
-	"yula/internal/database"
 	"yula/internal/models"
+
+	"github.com/stretchr/testify/assert"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-func TestInit(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+var (
+	testime string = "2014-11-12 11:45:26.371"
+	layout  string = "2006-01-02 15:04:05.000"
+)
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer postgres.Close()
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	ur := NewUserRepository(postgres.GetDbPool())
-
-	assert.NotNil(t, ur)
+func ParseTime() time.Time {
+	te, _ := time.Parse(layout, testime)
+	return te
 }
 
-func TestInsertSelect(t *testing.T) {
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
-
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer postgres.Close()
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	ur := NewUserRepository(postgres.GetDbPool())
-	assert.NotNil(t, ur)
-
-	ud := models.UserData{
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TESTINSERTSELECT.ru",
-		Password: "3191022331",
-	}
-
-	ur.Insert(&ud)
-	user, _ := ur.SelectByEmail(ud.Email)
-
-	assert.Equal(t, user.Email, ud.Email)
-	assert.Equal(t, user.Id, ud.Id)
+var testuser = &models.UserData{
+	Id:        0,
+	Name:      "Ваня",
+	Surname:   "Иванов",
+	Email:     "ivan@mail.ru",
+	Password:  "1234",
+	CreatedAt: ParseTime(),
+	Image:     "default_image",
+	Phone:     "89999999999",
 }
 
-func TestUpdate(t *testing.T) {
-	// loads values from .env into the system
-	pwd, err := os.Getwd()
-	folders := strings.Split(pwd, "/")
-	pwd = strings.Join(folders[:len(folders)-4], "/")
-	fmt.Println(pwd, err)
+func TimeToString(t time.Time) string {
+	return fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d.185743", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+}
 
-	if err := godotenv.Load(pwd + "/.env"); err != nil {
-		t.Fatal("No .env file found")
-	}
-
-	cnfg := config.NewConfig()
-	postgres, err := database.NewPostgres(cnfg.DbConfig.DatabaseUrl)
+func TestUserInsert(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		fmt.Println(err.Error())
+		t.Fatalf("cant create mock: %s", err)
 	}
-	defer postgres.Close()
+	defer db.Close()
 
+	repo := NewUserRepository(db)
+
+	mock.ExpectBegin()
+	rows := sqlmock.NewRows([]string{"id"}).AddRow(testuser.Id)
+	mock.ExpectQuery(`INSERT INTO users`).WithArgs(testuser.Email, testuser.Password, testime,
+		testuser.Name, testuser.Surname, testuser.Image, testuser.Phone).WillReturnRows(rows)
+
+	mock.ExpectExec("INSERT INTO rating_statistics").WithArgs(testuser.Id).WillReturnResult(driver.ResultNoRows)
+	mock.ExpectCommit()
+
+	err = repo.Insert(testuser)
+	assert.Nil(t, err)
+
+	err = mock.ExpectationsWereMet()
+	assert.Nil(t, err)
+}
+
+func Test(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		fmt.Println(err.Error())
+		t.Errorf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	mock.ExpectExec("INSERT INTO users").
+		WithArgs("john", "aboba").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	_, err = db.Exec("INSERT INTO users(name, created_at) VALUES (?, ?)", "john", "aboba")
+	if err != nil {
+		t.Errorf("error '%s' was not expected, while inserting a row", err)
 	}
 
-	ur := NewUserRepository(postgres.GetDbPool())
-	assert.NotNil(t, ur)
-
-	ud := models.UserData{
-		Email:    fmt.Sprint(time.Now().Unix()) + fmt.Sprint(rand.Int()) + "@TESTUPDATE.ru",
-		Password: "3191031",
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
-
-	ur.Insert(&ud)
-	ud.Email = fmt.Sprint(time.Now().Unix()) + "TESTUPDATE_aboba@mail.ru"
-	ur.Update(&ud)
-
-	user, _ := ur.SelectById(ud.Id)
-
-	assert.Equal(t, user.Email, ud.Email)
-	assert.Equal(t, user.Id, ud.Id)
 }

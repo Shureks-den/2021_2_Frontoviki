@@ -28,7 +28,8 @@ var (
 func TestCreate(t *testing.T) {
 
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserSignUp{
 		Password: "password",
@@ -47,7 +48,8 @@ func TestCreate(t *testing.T) {
 
 func TestGetByEmail(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := &models.UserSignUp{
 		Password: "password",
@@ -69,7 +71,8 @@ func TestGetByEmail(t *testing.T) {
 
 func TestTwiceCreate(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := &models.UserSignUp{
 		Password: "password",
@@ -91,7 +94,8 @@ func TestTwiceCreate(t *testing.T) {
 
 func TestGetByEmailUserNotExist(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserSignUp{
 		Password: "password",
@@ -106,7 +110,8 @@ func TestGetByEmailUserNotExist(t *testing.T) {
 
 func TestCheckPassword(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserSignUp{
 		Password: "password",
@@ -125,7 +130,8 @@ func TestCheckPassword(t *testing.T) {
 
 func TestCheckPasswordInvalid(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserSignUp{
 		Password: "password",
@@ -144,7 +150,8 @@ func TestCheckPasswordInvalid(t *testing.T) {
 
 func TestGetById(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserSignUp{
 		Password: "password",
@@ -166,7 +173,8 @@ func TestGetById(t *testing.T) {
 
 func TestGetByIdUserNotExist(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	ur.On("SelectById", mock.MatchedBy(func(userId int64) bool { return userId < 0 })).Return(nil, myerr.EmptyQuery)
 
@@ -176,7 +184,8 @@ func TestGetByIdUserNotExist(t *testing.T) {
 
 func TestUpdateUserProfile(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	reqUser := models.UserData{
 		Id:       0,
@@ -197,7 +206,8 @@ func TestUpdateUserProfile(t *testing.T) {
 
 func TestUpdateUserAlreadyExist(t *testing.T) {
 	ur := mocks.UserRepository{}
-	uu := NewUserUsecase(&ur, ilu)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	userActual := models.UserData{
 		Id:       0,
@@ -232,7 +242,8 @@ func TestUpdateUserAlreadyExist(t *testing.T) {
 func TestUploadAvatarSuccess(t *testing.T) {
 	ur := mocks.UserRepository{}
 	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
-	uu := NewUserUsecase(&ur, &mockedILU)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, ilu)
 
 	user := models.UserData{
 		Id:       0,
@@ -261,7 +272,8 @@ func TestUploadAvatarSuccess(t *testing.T) {
 func TestUpdatePasswordSuccess(t *testing.T) {
 	ur := mocks.UserRepository{}
 	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
-	uu := NewUserUsecase(&ur, &mockedILU)
+	rr := mocks.RatingRepository{}
+	uu := NewUserUsecase(&ur, &rr, &mockedILU)
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 

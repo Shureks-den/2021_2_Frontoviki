@@ -11,7 +11,7 @@ scrape_configs:
 
   - job_name: 'golang'
     static_configs:
-      - targets: ['IP']
+      - targets: ['host.docker.internal:8080']
 
 rule_files:
   - 'alerts.yml'

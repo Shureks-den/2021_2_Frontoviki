@@ -25,8 +25,8 @@ func (ur *UserRepository) Insert(user *models.UserData) error {
 		return internalError.GenInternalError(err)
 	}
 
-	row := tx.QueryRowContext(context.Background(),
-		"INSERT INTO users (email, password, created_at, name, surname, image, phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;",
+	row := tx.QueryRow(`INSERT INTO users (email, password, created_at, name, surname, image, phone) 
+						VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;`,
 		user.Email, user.Password, user.CreatedAt, user.Name, user.Surname, user.Image, user.Phone)
 
 	var id int64

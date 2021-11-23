@@ -70,7 +70,7 @@ func TestGetAdvert(t *testing.T) {
 	}
 	ua.On("SelectById", int64(0)).Return(&ad, nil)
 
-	advts, err := au.GetAdvert(ad.Id)
+	advts, err := au.GetAdvert(ad.Id, -1, false)
 	assert.Nil(t, err)
 	assert.Equal(t, ad, *advts)
 }
