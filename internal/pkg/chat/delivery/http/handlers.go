@@ -59,6 +59,7 @@ func (ch *ChatHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 func (ch *ChatHandler) ConnectHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger.Info("aboba")
 
 	vars := mux.Vars(r)
 	idFrom, _ := strconv.ParseInt(vars["idFrom"], 10, 64)
@@ -136,6 +137,7 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 
 func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	logger.Info("aboba")
 
 	u, err := url.Parse(r.URL.RequestURI())
 	if err != nil {

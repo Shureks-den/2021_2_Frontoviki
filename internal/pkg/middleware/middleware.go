@@ -124,6 +124,8 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: multipart/form-data required", nil))
 				return
 			}
+		case strings.Contains(relativePath, "/connect"):
+			break
 
 		default:
 			if contentType != "application/json" {

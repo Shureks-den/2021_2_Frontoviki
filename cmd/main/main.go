@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"yula/internal/config"
@@ -58,6 +61,7 @@ import (
 	chatServer "yula/services/chat/server"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	// _ "yula/docs"
 
@@ -183,6 +187,48 @@ func main() {
 	uh := userHttp.NewUserHandler(uu, su)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
+
+	grpcAuthClient, err := grpc.Dial(
+		"127.0.0.1:8180",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcAuthClient.Close()
+
+	pemServerCA, err := ioutil.ReadFile("/home/zennoma/back/2021_2_Frontoviki/selfsigned.crt")
+	if err != nil {
+
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+
+	}
+
+	// Create the credentials and return it
+	configG := &tls.Config{
+		RootCAs: certPool,
+	}
+
+	grpcChatClient, err := grpc.Dial(
+		"127.0.0.1:8280",
+		grpc.WithTransportCredentials(credentials.NewTLS(configG)),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcChatClient.Close()
+
+	grpcCategoryClient, err := grpc.Dial(
+		"127.0.0.1:8380",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcCategoryClient.Close()
 
 	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	cath := categoryHttp.NewCategoryHandler(categoryProto.NewCategoryClient(grpcCategoryClient))

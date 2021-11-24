@@ -22,7 +22,7 @@ func NewChatRepository(db *sql.DB) chat.ChatRepository {
 func (cr *ChatRepository) SelectMessages(idFrom int64, idTo int64, idAdv int64, offset int64, limit int64) ([]*models.Message, error) {
 	query := `SELECT user_from, user_to, adv_id, msg, created_at FROM messages
 			  WHERE user_from IN ($1, $2) AND user_to IN ($1, $2) AND adv_id = $3
-			  ORDER BY created_at DESC
+			  ORDER BY created_at
 			  OFFSET $4 LIMIT $5;`
 
 	rows, err := cr.db.QueryContext(context.Background(), query, idFrom, idTo, idAdv, offset, limit)
