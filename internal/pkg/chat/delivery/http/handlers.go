@@ -137,7 +137,6 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 
 func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
-	logger.Info("aboba")
 
 	u, err := url.Parse(r.URL.RequestURI())
 	if err != nil {
@@ -173,6 +172,15 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 			Limit:  page.Count,
 		},
 	})
+
+	if err != nil {
+		logger.Warnf("get history chat error: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
 
 	var messages []*models.Message
 	for _, message := range protomessages.M {
