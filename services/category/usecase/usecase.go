@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"yula/internal/models"
-	"yula/internal/pkg/category"
+	"yula/services/category"
 )
 
 type CategoryUsecase struct {

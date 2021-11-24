@@ -1,22 +1,24 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	"yula/internal/pkg/category"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
+
+	proto "yula/proto/generated/category"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 type CategoryHandler struct {
-	categoryUsecase category.CategoryUsecase
+	categoryUsecase proto.CategoryClient
 }
 
-func NewCategoryHandler(categoryUsecase category.CategoryUsecase) *CategoryHandler {
+func NewCategoryHandler(categoryUsecase proto.CategoryClient) *CategoryHandler {
 	return &CategoryHandler{
 		categoryUsecase: categoryUsecase,
 	}
@@ -42,12 +44,19 @@ func (ch *CategoryHandler) Routing(r *mux.Router) {
 // @Router /category [get]
 func (ch CategoryHandler) CategoriesListHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
-	categories, err := ch.categoryUsecase.GetCategories()
+	protocategories, err := ch.categoryUsecase.GetCategories(context.Background(), &proto.Nothing{Dummy: true})
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
+	}
+
+	var categories []*models.Category
+	for _, category := range protocategories.Categories {
+		categories = append(categories, &models.Category{
+			Name: category.Name,
+		})
 	}
 
 	w.WriteHeader(http.StatusOK)

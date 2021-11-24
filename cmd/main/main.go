@@ -35,24 +35,27 @@ import (
 	srchUse "yula/internal/pkg/search/usecase"
 
 	categoryHttp "yula/internal/pkg/category/delivery/http"
-	categoryRep "yula/internal/pkg/category/repository"
-	categoryUse "yula/internal/pkg/category/usecase"
+	categoryRep "yula/services/category/repository"
+	categoryUse "yula/services/category/usecase"
 
-	chatHttp "yula/internal/pkg/chat/delivery"
-	metrics "yula/internal/pkg/metrics"
-	metricsHttp "yula/internal/pkg/metrics/delivery"
+	chatHttp "yula/internal/pkg/chat/delivery/http"
 	chatRep "yula/services/chat/repository"
 	chatUse "yula/services/chat/usecase"
+
+	metrics "yula/internal/pkg/metrics"
+	metricsHttp "yula/internal/pkg/metrics/delivery"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 
 	authProto "yula/proto/generated/auth"
+	categoryProto "yula/proto/generated/category"
 	chatProto "yula/proto/generated/chat"
 
-	authServer "yula/services/auth/delivery"
-	chatServer "yula/services/chat/delivery"
+	authServer "yula/services/auth/server"
+	categoryServer "yula/services/category/server"
+	chatServer "yula/services/chat/server"
 
 	"google.golang.org/grpc"
 
@@ -61,12 +64,45 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+var (
+	grpcAuthClient     *grpc.ClientConn
+	grpcChatClient     *grpc.ClientConn
+	grpcCategoryClient *grpc.ClientConn
+)
+
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("No .env file found")
 	}
 
 	govalidator.SetFieldsRequiredByDefault(true)
+
+	grpcAuthClient, err := grpc.Dial(
+		"127.0.0.1:8180",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcAuthClient.Close()
+
+	grpcChatClient, err = grpc.Dial(
+		"127.0.0.1:8280",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcChatClient.Close()
+
+	grpcCategoryClient, err = grpc.Dial(
+		"127.0.0.1:8380",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcCategoryClient.Close()
 }
 
 func getPostgres(dsn string) *sql.DB {
@@ -145,30 +181,21 @@ func main() {
 
 	ah := advtHttp.NewAdvertHandler(au, uu)
 	uh := userHttp.NewUserHandler(uu, su)
-
-	grpcAuthClient, err := grpc.Dial(
-		"127.0.0.1:8180",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcAuthClient.Close()
-
-	grpcChatClient, err := grpc.Dial(
-		"127.0.0.1:8280",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcChatClient.Close()
-
-	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
-	cath := categoryHttp.NewCategoryHandler(catu)
+
+	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
+	cath := categoryHttp.NewCategoryHandler(categoryProto.NewCategoryClient(grpcCategoryClient))
 	chth := chatHttp.NewChatHandler(chatProto.NewChatClient(grpcChatClient))
+
+	grpcAuth := authServer.NewAuthGRPCServer(logrus.New(), su)
+	go grpcAuth.NewGRPCServer("127.0.0.1:8180")
+
+	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
+	go grpcChat.NewGRPCServer("127.0.0.1:8280")
+
+	grpcCategory := categoryServer.NewCategoryGRPCServer(logrus.New(), catu)
+	go grpcCategory.NewGRPCServer("127.0.0.1:8380")
 
 	sm := middleware.NewSessionMiddleware(su)
 
@@ -180,12 +207,6 @@ func main() {
 	cath.Routing(api)
 	middleware.Routing(api)
 	chth.Routing(api, sm)
-
-	grpcAuth := authServer.NewAuthGRPCServer(logrus.New(), su)
-	go grpcAuth.NewGRPCServer("127.0.0.1:8180")
-
-	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
-	go grpcChat.NewGRPCServer("127.0.0.1:8280")
 
 	port := config.Cfg.GetMainPort()
 	fmt.Printf("start serving ::%s\n", port)
