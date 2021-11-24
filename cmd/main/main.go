@@ -64,45 +64,12 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-var (
-	grpcAuthClient     *grpc.ClientConn
-	grpcChatClient     *grpc.ClientConn
-	grpcCategoryClient *grpc.ClientConn
-)
-
 func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("No .env file found")
 	}
 
 	govalidator.SetFieldsRequiredByDefault(true)
-
-	grpcAuthClient, err := grpc.Dial(
-		"127.0.0.1:8180",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcAuthClient.Close()
-
-	grpcChatClient, err = grpc.Dial(
-		"127.0.0.1:8280",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcChatClient.Close()
-
-	grpcCategoryClient, err = grpc.Dial(
-		"127.0.0.1:8380",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcCategoryClient.Close()
 }
 
 func getPostgres(dsn string) *sql.DB {
@@ -183,6 +150,33 @@ func main() {
 	uh := userHttp.NewUserHandler(uu, su)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
+
+	grpcAuthClient, err := grpc.Dial(
+		"127.0.0.1:8180",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcAuthClient.Close()
+
+	grpcChatClient, err := grpc.Dial(
+		"127.0.0.1:8280",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcChatClient.Close()
+
+	grpcCategoryClient, err := grpc.Dial(
+		"127.0.0.1:8380",
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+	defer grpcCategoryClient.Close()
 
 	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	cath := categoryHttp.NewCategoryHandler(categoryProto.NewCategoryClient(grpcCategoryClient))
