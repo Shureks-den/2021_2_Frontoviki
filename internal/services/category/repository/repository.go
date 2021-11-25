@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	"yula/services/category"
+	"yula/internal/services/category"
 )
 
 type CategoryRepository struct {

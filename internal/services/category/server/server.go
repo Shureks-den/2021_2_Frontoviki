@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 	"net"
-	"yula/services/category"
+	"yula/internal/services/category"
 
 	proto "yula/proto/generated/category"
 

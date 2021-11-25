@@ -11,7 +11,6 @@ import (
 	"yula/internal/config"
 
 	_ "github.com/jackc/pgx/stdlib"
-	"github.com/sirupsen/logrus"
 
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
@@ -22,8 +21,6 @@ import (
 
 	"yula/internal/pkg/middleware"
 	sessHttp "yula/internal/pkg/session/delivery/http"
-	sessRep "yula/services/auth/repository"
-	sessUse "yula/services/auth/usecase"
 
 	advtHttp "yula/internal/pkg/advt/delivery/http"
 	advtRep "yula/internal/pkg/advt/repository"
@@ -38,14 +35,10 @@ import (
 	srchUse "yula/internal/pkg/search/usecase"
 
 	categoryHttp "yula/internal/pkg/category/delivery/http"
-	categoryRep "yula/services/category/repository"
-	categoryUse "yula/services/category/usecase"
 
 	chatHttp "yula/internal/pkg/chat/delivery/http"
 	metrics "yula/internal/pkg/metrics"
 	metricsHttp "yula/internal/pkg/metrics/delivery"
-	chatRep "yula/services/chat/repository"
-	chatUse "yula/services/chat/usecase"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
@@ -54,10 +47,6 @@ import (
 	authProto "yula/proto/generated/auth"
 	categoryProto "yula/proto/generated/category"
 	chatProto "yula/proto/generated/chat"
-
-	authServer "yula/services/auth/server"
-	categoryServer "yula/services/category/server"
-	chatServer "yula/services/chat/server"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -86,6 +75,29 @@ func getPostgres(dsn string) *sql.DB {
 	}
 	db.SetMaxOpenConns(10)
 	return db
+}
+
+func CreateGRPCClient(endPoint string, opt grpc.DialOption) *grpc.ClientConn {
+	grpcAuthClient, err := grpc.Dial(endPoint, opt)
+	if err != nil {
+		log.Fatal("cant open grpc conn")
+	}
+
+	return grpcAuthClient
+}
+
+func CreateSecureGRPCClient(endPoint string, pemServerCA []byte) *grpc.ClientConn {
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		log.Fatal("can not append certs from pem")
+	}
+
+	// Create the credentials and return it
+	configG := &tls.Config{
+		RootCAs: certPool,
+	}
+
+	return CreateGRPCClient(endPoint, grpc.WithTransportCredentials(credentials.NewTLS(configG)))
 }
 
 // @title Volchock's API
@@ -129,88 +141,45 @@ func main() {
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
 	api.Use(middleware.LoggerMiddleware)
-	api.Use(middleware.CSRFMiddleWare())
+	//api.Use(middleware.CSRFMiddleWare())
 
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(sqlDB)
 	ur := userRep.NewUserRepository(sqlDB)
 	rr := userRep.NewRatingRepository(sqlDB)
-	sr := sessRep.NewSessionRepository(config.Cfg.GetTarantoolCfg())
 	cr := cartRep.NewCartRepository(sqlDB)
 	serr := srchRep.NewSearchRepository(sqlDB)
-	catr := categoryRep.NewCategoryRepository(sqlDB)
-	chr := chatRep.NewChatRepository(sqlDB)
 
 	ilu := imageloaderUse.NewImageLoaderUsecase(ilr)
 	au := advtUse.NewAdvtUsecase(ar, ilu)
 	uu := userUse.NewUserUsecase(ur, rr, ilu)
-	su := sessUse.NewSessionUsecase(sr)
 	cu := cartUse.NewCartUsecase(cr)
 	seru := srchUse.NewSearchUsecase(serr, ar)
-	catu := categoryUse.NewCategoryUsecase(catr)
-	chu := chatUse.NewChatUsecase(chr)
 
 	ah := advtHttp.NewAdvertHandler(au, uu)
-	uh := userHttp.NewUserHandler(uu, su)
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 
-	grpcAuthClient, err := grpc.Dial(
-		"127.0.0.1:8180",
-		grpc.WithInsecure(),
-	)
+	pemServerCA, err := ioutil.ReadFile(config.Cfg.GetSelfSignedCrt())
 	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
-	defer grpcAuthClient.Close()
-
-	pemServerCA, err := ioutil.ReadFile("/home/zennoma/back/2021_2_Frontoviki/selfsigned.crt")
-	if err != nil {
-
+		log.Fatal(err.Error())
 	}
 
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemServerCA) {
-
-	}
-
-	// Create the credentials and return it
-	configG := &tls.Config{
-		RootCAs: certPool,
-	}
-
-	grpcChatClient, err := grpc.Dial(
-		"127.0.0.1:8280",
-		grpc.WithTransportCredentials(credentials.NewTLS(configG)),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
+	grpcChatClient := CreateSecureGRPCClient(config.Cfg.GetChatEndPoint(), pemServerCA)
 	defer grpcChatClient.Close()
 
-	grpcCategoryClient, err := grpc.Dial(
-		"127.0.0.1:8380",
-		grpc.WithInsecure(),
-	)
-	if err != nil {
-		log.Fatal("cant open grpc conn")
-	}
+	grpcAuthClient := CreateGRPCClient(config.Cfg.GetAuthEndPoint(), grpc.WithInsecure())
+	defer grpcAuthClient.Close()
+
+	grpcCategoryClient := CreateGRPCClient(config.Cfg.GetCategoryEndPoint(), grpc.WithInsecure())
 	defer grpcCategoryClient.Close()
 
+	uh := userHttp.NewUserHandler(uu, authProto.NewAuthClient(grpcAuthClient))
 	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	cath := categoryHttp.NewCategoryHandler(categoryProto.NewCategoryClient(grpcCategoryClient))
 	chth := chatHttp.NewChatHandler(chatProto.NewChatClient(grpcChatClient))
 
-	grpcAuth := authServer.NewAuthGRPCServer(logrus.New(), su)
-	go grpcAuth.NewGRPCServer("127.0.0.1:8180")
-
-	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
-	go grpcChat.NewGRPCServer("127.0.0.1:8280")
-
-	grpcCategory := categoryServer.NewCategoryGRPCServer(logrus.New(), catu)
-	go grpcCategory.NewGRPCServer("127.0.0.1:8380")
-
-	sm := middleware.NewSessionMiddleware(su)
+	sm := middleware.NewSessionMiddleware(authProto.NewAuthClient(grpcAuthClient))
 
 	ah.Routing(api, sm)
 	uh.Routing(api, sm)
@@ -227,7 +196,7 @@ func main() {
 	var error error
 	secure := config.Cfg.IsSecure()
 	if secure {
-		error = http.ListenAndServeTLS(fmt.Sprintf(":%s", port), "certificate.crt", "key.key", r)
+		error = http.ListenAndServeTLS(fmt.Sprintf(":%s", port), config.Cfg.GetHTTPSCrt(), config.Cfg.GetHTTPSKey(), r)
 	} else {
 		error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
 	}

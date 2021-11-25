@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	internalError "yula/internal/error"
@@ -9,7 +10,7 @@ import (
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/user"
-	session "yula/services/auth"
+	proto "yula/proto/generated/auth"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
@@ -20,10 +21,10 @@ import (
 
 type UserHandler struct {
 	userUsecase    user.UserUsecase
-	sessionUsecase session.SessionUsecase
+	sessionUsecase proto.AuthClient
 }
 
-func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.SessionUsecase) *UserHandler {
+func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase proto.AuthClient) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
 		sessionUsecase: sessionUsecase,
@@ -95,7 +96,7 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userSession, err := uh.sessionUsecase.Create(user.Id)
+	protoUserSession, err := uh.sessionUsecase.Create(context.Background(), &proto.UserID{ID: user.Id})
 	if err != nil {
 		logger.Warnf("can not create session based on user %d: %s", user.Id, err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -103,6 +104,11 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
+	}
+	userSession := models.Session{
+		Value:     protoUserSession.SessionID,
+		ExpiresAt: protoUserSession.ExpireAt.AsTime(),
+		UserId:    protoUserSession.UserID,
 	}
 
 	http.SetCookie(w, &http.Cookie{

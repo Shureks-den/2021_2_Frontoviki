@@ -34,6 +34,45 @@ type config struct {
 			Password string
 		}
 	}
+
+	Microservices struct {
+		Chat struct {
+			Host string
+			Port string
+		}
+
+		Auth struct {
+			Host string
+			Port string
+		}
+
+		Category struct {
+			Host string
+			Port string
+		}
+	}
+
+	Certificates struct {
+		Selfsigned struct {
+			Crt struct {
+				Path string
+			}
+
+			Key struct {
+				Path string
+			}
+		}
+
+		Https struct {
+			Crt struct {
+				Path string
+			}
+
+			Key struct {
+				Path string
+			}
+		}
+	}
 }
 
 var (
@@ -132,4 +171,35 @@ func GetEnv(key, defaultValue string) string {
 	}
 
 	return defaultValue
+}
+
+func (c *config) GetChatEndPoint() string {
+	return fmt.Sprintf("%s:%s", c.Microservices.Chat.Host, c.Microservices.Chat.Port)
+}
+
+func (c *config) GetAuthEndPoint() string {
+	fmt.Println(c.Microservices.Auth.Host)
+	fmt.Println(c.Microservices.Auth.Port)
+
+	return fmt.Sprintf("%s:%s", c.Microservices.Auth.Host, c.Microservices.Auth.Port)
+}
+
+func (c *config) GetCategoryEndPoint() string {
+	return fmt.Sprintf("%s:%s", c.Microservices.Category.Host, c.Microservices.Category.Port)
+}
+
+func (c *config) GetSelfSignedCrt() string {
+	return c.Certificates.Selfsigned.Crt.Path
+}
+
+func (c *config) GetSelfSignedKey() string {
+	return c.Certificates.Selfsigned.Key.Path
+}
+
+func (c *config) GetHTTPSCrt() string {
+	return c.Certificates.Https.Crt.Path
+}
+
+func (c *config) GetHTTPSKey() string {
+	return c.Certificates.Https.Key.Path
 }

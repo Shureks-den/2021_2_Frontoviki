@@ -10,7 +10,7 @@ import (
 	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	session "yula/services/auth"
+	proto "yula/proto/generated/auth"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/csrf"
@@ -26,10 +26,10 @@ const ContextLoggerField contextKey = "logger fields"
 const SCRFToken = "c4e0344db55a8e7e5b79f5d2c9ff317c"
 
 type SessionMiddleware struct {
-	sessionUsecase session.SessionUsecase
+	sessionUsecase proto.AuthClient
 }
 
-func NewSessionMiddleware(sessionUsecase session.SessionUsecase) *SessionMiddleware {
+func NewSessionMiddleware(sessionUsecase proto.AuthClient) *SessionMiddleware {
 	return &SessionMiddleware{
 		sessionUsecase: sessionUsecase,
 	}
@@ -49,7 +49,10 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			return
 		}
 
-		session, err := sm.sessionUsecase.Check(cookie.Value)
+		protoSession, err := sm.sessionUsecase.Check(context.Background(), &proto.SessionID{
+			ID: cookie.Value,
+		})
+
 		if err != nil {
 			log.Printf("error middleware 2: %v\n", err.Error())
 
@@ -59,6 +62,12 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 
 			w.Write(models.ToBytes(http.StatusUnauthorized, "no rights to access this resource", nil))
 			return
+		}
+
+		session := models.Session{
+			UserId:    protoSession.UserID,
+			Value:     protoSession.SessionID,
+			ExpiresAt: protoSession.ExpireAt.AsTime(),
 		}
 
 		// то есть если нашли куку и она валидна, запишем ее в контекст
@@ -78,10 +87,16 @@ func (sm *SessionMiddleware) SoftCheckAuthorized(next http.HandlerFunc) http.Han
 			return
 		}
 
-		session, err := sm.sessionUsecase.Check(cookie.Value)
+		protoSession, err := sm.sessionUsecase.Check(context.Background(), &proto.SessionID{ID: cookie.Value})
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return
+		}
+
+		session := models.Session{
+			UserId:    protoSession.UserID,
+			Value:     protoSession.SessionID,
+			ExpiresAt: protoSession.ExpireAt.AsTime(),
 		}
 
 		ctxId := context.WithValue(r.Context(), ContextUserId, session.UserId)

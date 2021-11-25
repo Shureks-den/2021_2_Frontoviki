@@ -4,7 +4,7 @@ import (
 	"time"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	session "yula/services/auth"
+	session "yula/internal/services/auth"
 
 	"github.com/google/uuid"
 )

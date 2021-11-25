@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	chat "yula/internal/services/chat"
 	proto "yula/proto/generated/chat"
-	chat "yula/services/chat"
 )
 
 type ChatServer struct {
@@ -28,7 +28,7 @@ func NewChatGRPCServer(logger *logrus.Logger, cu chat.ChatUsecase) *ChatServer {
 	return server
 }
 
-func (server *ChatServer) NewGRPCServer(listenUrl string) error {
+func (server *ChatServer) NewGRPCServer(listenUrl string, certFile string, keyFile string) error {
 	lis, err := net.Listen("tcp", listenUrl)
 	server.logger.Infof("CHAT: my listen url %s \n", listenUrl)
 
@@ -36,9 +36,10 @@ func (server *ChatServer) NewGRPCServer(listenUrl string) error {
 		server.logger.Errorf("can not listen url: %s err :%v\n", listenUrl, err)
 		return err
 	}
-	serverCert, err := tls.LoadX509KeyPair("/home/zennoma/back/2021_2_Frontoviki/selfsigned.crt", "/home/zennoma/back/2021_2_Frontoviki/selfsigned.key")
-	if err != nil {
 
+	serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		server.logger.Error(err.Error())
 	}
 
 	// Create the credentials and return it

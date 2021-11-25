@@ -6,7 +6,7 @@ import (
 	"yula/internal/models"
 
 	myerr "yula/internal/error"
-	"yula/services/auth/mocks"
+	"yula/internal/services/auth/mocks"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

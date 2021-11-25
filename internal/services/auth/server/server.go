@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"net"
+	sessions "yula/internal/services/auth"
 	proto "yula/proto/generated/auth"
-	sessions "yula/services/auth"
 
 	"github.com/sirupsen/logrus"
 
