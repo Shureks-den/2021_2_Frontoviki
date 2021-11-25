@@ -260,7 +260,7 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		logger.Warnf("get dialogs error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}

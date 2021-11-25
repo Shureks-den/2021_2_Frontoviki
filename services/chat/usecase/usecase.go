@@ -5,8 +5,6 @@ import (
 	"yula/services/chat"
 
 	internalError "yula/internal/error"
-
-	"github.com/prometheus/common/log"
 )
 
 type ChatUsecase struct {
