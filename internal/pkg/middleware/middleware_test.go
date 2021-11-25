@@ -10,7 +10,7 @@ import (
 
 	myerr "yula/internal/error"
 
-	sessMock "yula/internal/pkg/session/mocks"
+	sessMock "yula/services/auth/mocks"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"

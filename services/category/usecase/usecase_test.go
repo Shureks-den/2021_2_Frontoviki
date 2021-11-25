@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"testing"
-	"yula/internal/pkg/category/mocks"
+	"yula/services/category/mocks"
 
 	"github.com/stretchr/testify/assert"
 )
