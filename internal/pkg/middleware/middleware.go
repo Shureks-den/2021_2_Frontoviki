@@ -125,6 +125,9 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
+		case strings.Contains(relativePath, "/connect"):
+			break
+
 		default:
 			if contentType != "application/json" {
 				w.Header().Set("Content-Type", "application/json")
