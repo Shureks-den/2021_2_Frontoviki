@@ -1,4 +1,4 @@
-package delivery
+package http
 
 import (
 	"context"
@@ -127,7 +127,7 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 
 		for _, conn := range to.conn {
 			if err := conn.WriteMessage(msgType, msg); err != nil {
-				logger.Error("Can not write msg from user %d to user %d on ad %d", session.idFrom, session.idTo, session.idAdv)
+				logger.Errorf("Can not write msg from user %d to user %d on ad %d", session.idFrom, session.idTo, session.idAdv)
 				return
 			}
 		}

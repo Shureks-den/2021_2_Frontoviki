@@ -17,7 +17,7 @@ import (
 	"yula/internal/pkg/middleware"
 	userMock "yula/internal/pkg/user/mocks"
 
-	sessMock "yula/internal/pkg/session/mocks"
+	sessMock "yula/services/auth/mocks"
 
 	imageloader "yula/internal/pkg/image_loader"
 
