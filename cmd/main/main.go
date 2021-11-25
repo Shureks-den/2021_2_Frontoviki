@@ -129,7 +129,7 @@ func main() {
 	api.Use(middleware.CorsMiddleware)
 	api.Use(middleware.ContentTypeMiddleware)
 	api.Use(middleware.LoggerMiddleware)
-	//api.Use(middleware.CSRFMiddleWare())
+	api.Use(middleware.CSRFMiddleWare())
 
 	ilr := imageloaderRepo.NewImageLoaderRepository()
 	ar := advtRep.NewAdvtRepository(sqlDB)
@@ -231,6 +231,5 @@ func main() {
 	} else {
 		error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
 	}
-
 	logger.Errorf("http serve error %v", error)
 }
