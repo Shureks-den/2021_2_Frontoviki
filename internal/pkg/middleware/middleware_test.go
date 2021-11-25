@@ -94,6 +94,36 @@ func TestMiddleware_CheckAuthorized_Success(t *testing.T) {
 	assert.Equal(t, int64(0), session.UserId)
 }
 
+func TestMiddleware_CheckSoftAuthorized_Success(t *testing.T) {
+	su := sessMock.SessionUsecase{}
+	mw := NewSessionMiddleware(&su)
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
+
+	su.On("Check", userSession.Value).Return(&userSession, nil)
+
+	w := httptest.NewRecorder()
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    userSession.Value,
+		Expires:  userSession.ExpiresAt,
+		HttpOnly: true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+	})
+	r := &http.Request{Header: http.Header{"Cookie": []string{w.Header().Get("Set-Cookie")}}}
+
+	caller(w, r)
+	mw.SoftCheckAuthorized(caller).ServeHTTP(w, r)
+
+	cookie, err := r.Cookie("session_id")
+	assert.Nil(t, err)
+	session, err := su.Check(cookie.Value)
+	assert.Nil(t, err)
+
+	assert.Equal(t, int64(0), session.UserId)
+}
+
 func TestMiddleware_CheckAuthorized_InvalidCookieName(t *testing.T) {
 	su := sessMock.SessionUsecase{}
 	mw := NewSessionMiddleware(&su)
@@ -162,6 +192,16 @@ func TestLoggerInit(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	mw := LoggerMiddleware(caller)
+	mw.ServeHTTP(w, r)
+}
+
+func TestSetCSRF(t *testing.T) {
+	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	r := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+
+	mw := SetSCRFToken(caller)
 	mw.ServeHTTP(w, r)
 }
 

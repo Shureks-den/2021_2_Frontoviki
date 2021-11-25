@@ -230,6 +230,7 @@ func TestUpdateProfileSuccess(t *testing.T) {
 	defer srv.Close()
 
 	uu.On("UpdateProfile", userNew.Id, &userNew).Return(userNew.ToProfile(), nil)
+	uu.On("GetRating", userNew.Id, userNew.Id).Return(&models.RatingStat{}, nil)
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(userNew)
@@ -357,6 +358,7 @@ func TestUploadImageSuccess(t *testing.T) {
 	}
 
 	uu.On("UploadAvatar", mock.AnythingOfType("*multipart.FileHeader"), int64(0)).Return(&user, nil)
+	uu.On("GetRating", user.Id, user.Id).Return(&models.RatingStat{}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

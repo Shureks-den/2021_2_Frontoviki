@@ -65,9 +65,9 @@ func (cr *CartRepository) Update(cart *models.Cart) error {
 	}
 
 	queryStr := "UPDATE cart SET amount = $3 WHERE user_id = $1 AND advert_id = $2;"
-	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
+	_, err = tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
 
-	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -90,9 +90,9 @@ func (cr *CartRepository) Insert(cart *models.Cart) error {
 	}
 
 	queryStr := "INSERT INTO cart (user_id, advert_id, amount) VALUES ($1, $2, $3);"
-	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
+	_, err = tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId, cart.Amount)
 
-	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError
@@ -115,9 +115,9 @@ func (cr *CartRepository) Delete(cart *models.Cart) error {
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1 AND advert_id = $2;"
-	ct, err := tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId)
+	_, err = tx.ExecContext(context.Background(), queryStr, cart.UserId, cart.AdvertId)
 
-	if ra, _ := ct.RowsAffected(); ra == 0 || err != nil {
+	if err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return internalError.RollbackError

@@ -175,8 +175,8 @@ func TestUploadImagesSuccess(t *testing.T) {
 	}
 	ar.On("SelectById", ad.Id).Return(&ad, nil)
 	ilu.On("UploadAdvertImages", files).Return([]string{"/home/aboba/"}, nil)
-	ar.On("EditImages", ad.Id, []string{"/home/aboba/"}).Return(nil)
-	ilu.On("RemoveAdvertImages", ad.Images).Return(nil)
+	ar.On("InsertImages", ad.Id, []string{"/home/aboba/"}).Return(nil)
+	// ilu.On("RemoveAdvertImages", ad.Images).Return(nil)
 
 	advt, err := au.UploadImages(files, ad.Id, 1)
 	assert.NotNil(t, advt)
@@ -265,36 +265,53 @@ func TestUploadImagesFail4(t *testing.T) {
 	}
 	ar.On("SelectById", ad.Id).Return(&ad, nil)
 	illu.On("UploadAdvertImages", files).Return([]string{"/home/aboba/"}, nil)
-	ar.On("EditImages", ad.Id, []string{"/home/aboba/"}).Return(myerr.DatabaseError)
+	ar.On("InsertImages", ad.Id, []string{"/home/aboba/"}).Return(myerr.DatabaseError)
 
 	advt, err := au.UploadImages(files, ad.Id, 1)
 	assert.Nil(t, advt)
 	assert.NotNil(t, err)
 }
 
-func TestUploadImagesFail5(t *testing.T) {
+func TestRemoveImagesSuccess(t *testing.T) {
 	ar := mockAdvt.AdvtRepository{}
 	illu := mocks.ImageLoaderUsecase{}
 	au := NewAdvtUsecase(&ar, &illu)
-	files := []*multipart.FileHeader{
-		{
-			Filename: "aboba",
-		},
-	}
-	ad := models.Advert{
+
+	ad := &models.Advert{
 		Id:          0,
 		Name:        "aboba",
 		Amount:      0,
 		PublisherId: 1,
 	}
-	ar.On("SelectById", ad.Id).Return(&ad, nil)
-	illu.On("UploadAdvertImages", files).Return([]string{"/home/aboba/"}, nil)
-	ar.On("EditImages", ad.Id, []string{"/home/aboba/"}).Return(nil)
-	illu.On("RemoveAdvertImages", ad.Images).Return(myerr.InternalError)
 
-	advt, err := au.UploadImages(files, ad.Id, 1)
-	assert.Nil(t, advt)
-	assert.NotNil(t, err)
+	images := []string{"img1", "img2"}
+	ar.On("SelectById", ad.Id).Return(ad, nil)
+	ar.On("DeleteImages", images, ad.Id).Return(nil)
+	illu.On("RemoveAdvertImages", images).Return(nil)
+
+	err := au.RemoveImages(images, ad.Id, ad.PublisherId)
+	assert.NoError(t, err)
+}
+
+func TestRemoveImagesError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	illu := mocks.ImageLoaderUsecase{}
+	au := NewAdvtUsecase(&ar, &illu)
+
+	ad := &models.Advert{
+		Id:          0,
+		Name:        "aboba",
+		Amount:      0,
+		PublisherId: 1,
+	}
+
+	images := []string{"img1", "img2"}
+	ar.On("SelectById", ad.Id).Return(ad, nil)
+	ar.On("DeleteImages", images, ad.Id).Return(nil)
+	illu.On("RemoveAdvertImages", images).Return(nil)
+
+	err := au.RemoveImages(images, ad.Id, int64(0))
+	assert.Error(t, err)
 }
 
 func TestGetAdvertListByPublicherId(t *testing.T) {
@@ -321,4 +338,136 @@ func TestAdvertsToShort(t *testing.T) {
 	}
 
 	au.AdvertsToShort(advts)
+}
+
+func TestGetAdvertListByCategorySuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advts := []*models.Advert{
+		{
+			Name:     "aboba",
+			Category: "baobab",
+		},
+	}
+	page := &models.Page{}
+
+	ar.On("SelectAdvertsByCategory", advts[0].Category, page.PageNum, page.Count).Return(advts, nil)
+
+	ads, err := au.GetAdvertListByCategory(advts[0].Category, page)
+	assert.Equal(t, advts, ads)
+	assert.NoError(t, err)
+}
+
+func TestGetAdvertListByCategoryError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advts := []*models.Advert{
+		{
+			Name:     "aboba",
+			Category: "baobab",
+		},
+	}
+	page := &models.Page{}
+
+	ar.On("SelectAdvertsByCategory", advts[0].Category, page.PageNum, page.Count).Return(nil, myerr.InternalError)
+
+	ads, err := au.GetAdvertListByCategory(advts[0].Category, page)
+	assert.NotEqual(t, advts, ads)
+	assert.Error(t, err)
+}
+
+func TestGetFavoriteListSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId := int64(1)
+	page := &models.Page{}
+	advts := []*models.Advert{}
+
+	ar.On("SelectFavoriteAdverts", userId, page.PageNum, page.Count).Return(advts, nil)
+
+	ads, err := au.GetFavoriteList(userId, page)
+	assert.Equal(t, advts, ads)
+	assert.NoError(t, err)
+}
+
+func TestGetFavoriteListError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId := int64(1)
+	page := &models.Page{}
+	advts := []*models.Advert{}
+
+	ar.On("SelectFavoriteAdverts", userId, page.PageNum, page.Count).Return(nil, myerr.InternalError)
+
+	ads, err := au.GetFavoriteList(userId, page)
+	assert.NotEqual(t, advts, ads)
+	assert.Error(t, err)
+}
+
+func TestAddFavoriteSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId, advertId := int64(0), int64(0)
+
+	ar.On("SelectFavorite", userId, advertId).Return(nil, myerr.EmptyQuery)
+	ar.On("InsertFavorite", userId, advertId).Return(nil)
+
+	err := au.AddFavorite(userId, advertId)
+	assert.NoError(t, err)
+}
+
+func TestAddFavoriteError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId, advertId := int64(0), int64(0)
+
+	ar.On("SelectFavorite", userId, advertId).Return(nil, myerr.InternalError)
+
+	err := au.AddFavorite(userId, advertId)
+	assert.Error(t, err)
+}
+
+func TestRemoveFavoriteSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId, advertId := int64(0), int64(0)
+
+	adv := &models.Advert{}
+
+	ar.On("SelectFavorite", userId, advertId).Return(adv, nil)
+	ar.On("DeleteFavorite", userId, advertId).Return(nil)
+
+	err := au.RemoveFavorite(userId, advertId)
+	assert.NoError(t, err)
+}
+
+func TestRemoveFavoriteError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	userId, advertId := int64(0), int64(0)
+
+	ar.On("SelectFavorite", userId, advertId).Return(nil, myerr.InternalError)
+
+	err := au.RemoveFavorite(userId, advertId)
+	assert.Error(t, err)
+}
+
+func TestGetAdvertViews(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advertId := int64(0)
+
+	ar.On("SelectViews", advertId).Return(int64(0), nil)
+
+	_, err := au.GetAdvertViews(advertId)
+	assert.NoError(t, err)
 }
