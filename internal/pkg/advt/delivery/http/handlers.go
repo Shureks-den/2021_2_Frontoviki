@@ -43,13 +43,19 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/archive", middleware.SetSCRFToken(http.Handler(sm.CheckAuthorized(http.HandlerFunc(ah.ArchiveHandler))))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/category/{category}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertListByCategoryHandler))).Methods(http.MethodGet, http.MethodOptions)
 
-	s.HandleFunc("/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.AdvertDetailHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.AdvertDetailHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AdvertUpdateHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.DeleteAdvertHandler))).Methods(http.MethodDelete, http.MethodOptions)
 	s.Handle("/{id:[0-9]+}/close", sm.CheckAuthorized(http.HandlerFunc(ah.CloseAdvertHandler))).Methods(http.MethodPost, http.MethodOptions)
-	s.Handle("/{id:[0-9]+}/upload", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
 
-	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/{id:[0-9]+}/images", sm.CheckAuthorized(http.HandlerFunc(ah.UploadImageHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/{id:[0-9]+}/images", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveImageHandler))).Methods(http.MethodDelete, http.MethodOptions)
+
+	s.HandleFunc("/salesman/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.SalesmanPageHandler))).Methods(http.MethodGet, http.MethodOptions)
+
+	s.Handle("/favorite", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.FavoriteListHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
@@ -170,6 +176,10 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 // @Router /adverts/{id} [get]
 func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
 	vars := mux.Vars(r)
 	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -181,11 +191,20 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	advert, err := ah.advtUsecase.GetAdvert(advertId)
+	advert, err := ah.advtUsecase.GetAdvert(advertId, userId, true)
 	if err != nil {
 		logger.Warnf("can not get adv by advId: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	advert.Views, err = ah.advtUsecase.GetAdvertViews(advertId)
+	if err != nil {
+		logger.Warnf("can not get views: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
@@ -201,8 +220,17 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	rateStat, err := ah.userUsecase.GetRating(userId, salesman.Id)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 	logger.Debug("advert found successfully")
 }
@@ -383,7 +411,7 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 // @Param images formData file true "Uploaded images"
 // @Success 200 {object} models.HttpBodyInterface{body=models.HttpBodyAdvertDetail{advert=models.Advert,salesman=models.Profile}}
 // @failure default {object} models.HttpError
-// @Router /adverts/{id}/upload [post]
+// @Router /adverts/{id}/image [post]
 func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 	var userId int64
@@ -447,6 +475,57 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	logger.Debug("image uploaded successfully")
 }
 
+// UploadImageHandler godoc
+// @Summary Upload images for advert
+// @Description Upload images for advert
+// @Tags advert
+// @Accept multipart/form-data
+// @Produce application/json
+// @Param id path integer true "Advert id"
+// @Param images body models.AdvertImages true "Pathes to images"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/{id}/image [delete]
+func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	defer r.Body.Close()
+	images := &models.AdvertImages{}
+	err = json.NewDecoder(r.Body).Decode(&images)
+	if err != nil {
+		logger.Warnf("can not decode images: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.RemoveImages(images.ImagesPath, advertId, userId)
+	if err != nil {
+		logger.Warnf("can not delete images of %d advert: %s", advertId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "images removed successfully", nil))
+}
+
 // SalesmanPageHandler godoc
 // @Summary Get salesman page and his adverts
 // @Description Get salesman page and his adverts
@@ -461,6 +540,11 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 // @Router /adverts/salesman/{id} [get]
 func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
 	vars := mux.Vars(r)
 	salesmanId, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil {
@@ -510,8 +594,17 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 
 	shortAdverts := ah.advtUsecase.AdvertsToShort(adverts)
 
+	rateStat, err := ah.userUsecase.GetRating(userId, salesman.Id)
+	if err != nil {
+		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts}
+	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts, Rating: *rateStat}
 	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
 }
 
@@ -604,4 +697,126 @@ func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *h
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
 	w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
+}
+
+// FavoriteListHandler godoc
+// @Summary Get list of favorite adverts
+// @Description Get list of favorite adverts
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param page query string false "Page num"
+// @Param count query string false "Count adverts per page"
+// @Success 200 {object} models.HttpBodyInterface{body=HttpBodyAdverts}
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite [get]
+func (ah *AdvertHandler) FavoriteListHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	query := r.URL.Query()
+	page, err := models.NewPage(query.Get("page"), query.Get("count"))
+	if err != nil {
+		logger.Warnf("can not create page: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	adverts, err := ah.advtUsecase.GetFavoriteList(userId, page)
+	if err != nil {
+		logger.Warnf("can not get favorite list: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: adverts}
+	w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+}
+
+// AddFavoriteHandler godoc
+// @Summary Add to favorites
+// @Description Add to favorites
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param id query int true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite/{id} [post]
+func (ah *AdvertHandler) AddFavoriteHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.AddFavorite(userId, advertId)
+	if err != nil {
+		logger.Warnf("can not add to favorite: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "added to favorite", nil))
+}
+
+// RemoveFavoriteHandler godoc
+// @Summary Remove to favorites
+// @Description Remove to favorites
+// @Tags favorite
+// @Accept application/json
+// @Produce application/json
+// @Param id query int true "Advert id"
+// @Success 200 {object} models.HttpBodyInterface
+// @failure default {object} models.HttpError
+// @Router /adverts/favorite/{id} [delete]
+func (ah *AdvertHandler) RemoveFavoriteHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = ah.advtUsecase.RemoveFavorite(userId, advertId)
+	if err != nil {
+		logger.Warnf("can not remove from favorite: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "removed from favorite", nil))
 }

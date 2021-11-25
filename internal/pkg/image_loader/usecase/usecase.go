@@ -1,12 +1,13 @@
 package usecase
 
 import (
+	"fmt"
 	"mime/multipart"
+	"strconv"
 	"strings"
+	"time"
 	internalError "yula/internal/error"
 	imageloader "yula/internal/pkg/image_loader"
-
-	"github.com/google/uuid"
 )
 
 func contains(s []string, e string) bool {
@@ -38,8 +39,8 @@ func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir stri
 		return "", internalError.UnknownExtension
 	}
 
-	avatarId := uuid.NewString()
-	filename := avatarId + "." + extension
+	timestamp := time.Now().UnixMicro()
+	filename := fmt.Sprintf("%s.%s", strconv.FormatInt(timestamp, 10), extension)
 
 	err := ilu.imageLoaderRepo.Insert(headerFile, dir, filename)
 	if err != nil {
@@ -60,6 +61,9 @@ func (ilu *ImageLoaderUsecase) RemoveAvatar(filePath string) error {
 
 func (ilu *ImageLoaderUsecase) RemoveAdvertImages(imageUrls []string) error {
 	for _, url := range imageUrls {
+		if url == imageloader.DefaultAdvertImage {
+			continue
+		}
 		err := ilu.imageLoaderRepo.Delete(url)
 		if err != nil {
 			return err

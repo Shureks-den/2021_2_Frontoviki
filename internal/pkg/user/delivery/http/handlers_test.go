@@ -17,7 +17,7 @@ import (
 	"yula/internal/pkg/middleware"
 	userMock "yula/internal/pkg/user/mocks"
 
-	sessMock "yula/internal/pkg/session/mocks"
+	sessMock "yula/services/auth/mocks"
 
 	imageloader "yula/internal/pkg/image_loader"
 
@@ -57,7 +57,6 @@ func TestSignUpHandlerValid(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 
@@ -135,7 +134,6 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 	uu.On("Create", &reqUser).Return(nil, myerr.AlreadyExist)
@@ -194,7 +192,6 @@ func TestSignUpHandlerFailCreateSession(t *testing.T) {
 		Password:  "aboba",
 		CreatedAt: time.Now(),
 		Image:     imageloader.DefaultAdvertImage,
-		Rating:    0,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
 	su.On("Create", userCreated.Id).Return(nil, myerr.InternalError).Once()
@@ -233,6 +230,7 @@ func TestUpdateProfileSuccess(t *testing.T) {
 	defer srv.Close()
 
 	uu.On("UpdateProfile", userNew.Id, &userNew).Return(userNew.ToProfile(), nil)
+	uu.On("GetRating", userNew.Id, userNew.Id).Return(&models.RatingStat{}, nil)
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(userNew)
@@ -360,6 +358,7 @@ func TestUploadImageSuccess(t *testing.T) {
 	}
 
 	uu.On("UploadAvatar", mock.AnythingOfType("*multipart.FileHeader"), int64(0)).Return(&user, nil)
+	uu.On("GetRating", user.Id, user.Id).Return(&models.RatingStat{}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

@@ -15,10 +15,17 @@ type AdvtUsecase interface {
 	AdvertsToShort(adverts []*models.Advert) []*models.AdvertShort
 
 	CreateAdvert(userId int64, advert *models.Advert) error
-	GetAdvert(advertId int64) (*models.Advert, error)
+	GetAdvert(advertId, userId int64, updateViews bool) (*models.Advert, error)
 	UpdateAdvert(advertId int64, newAdvert *models.Advert) error
 	DeleteAdvert(advertId int64, userId int64) error
 	CloseAdvert(advertId int64, userId int64) error
 
 	UploadImages(files []*multipart.FileHeader, advertId int64, userId int64) (*models.Advert, error)
+	RemoveImages(images []string, advertId, userId int64) error
+
+	GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error)
+	AddFavorite(userId int64, advertId int64) error
+	RemoveFavorite(userId int64, advertId int64) error
+
+	GetAdvertViews(advertId int64) (int64, error)
 }

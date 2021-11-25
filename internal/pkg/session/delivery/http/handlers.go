@@ -1,14 +1,16 @@
 package delivery
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 	internalError "yula/internal/error"
+	auth "yula/proto/generated/auth"
+
 	"yula/internal/models"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
-	"yula/internal/pkg/session"
 	"yula/internal/pkg/user"
 
 	"github.com/asaskevich/govalidator"
@@ -18,11 +20,11 @@ import (
 )
 
 type SessionHandler struct {
-	sessionUsecase session.SessionUsecase
+	sessionUsecase auth.AuthClient
 	userUsecase    user.UserUsecase
 }
 
-func NewSessionHandler(sessionUsecase session.SessionUsecase, userUsecase user.UserUsecase) *SessionHandler {
+func NewSessionHandler(sessionUsecase auth.AuthClient, userUsecase user.UserUsecase) *SessionHandler {
 	return &SessionHandler{
 		sessionUsecase: sessionUsecase, userUsecase: userUsecase,
 	}
@@ -95,7 +97,7 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userSession, err := sh.sessionUsecase.Create(user.Id)
+	userSession, err := sh.sessionUsecase.Create(context.Background(), &auth.UserID{ID: user.Id})
 	if err != nil {
 		logger.Warnf("can not create user: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -107,8 +109,8 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
-		Value:    userSession.Value,
-		Expires:  userSession.ExpiresAt,
+		Value:    userSession.SessionID,
+		Expires:  userSession.ExpireAt.AsTime(),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
@@ -141,7 +143,7 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = sh.sessionUsecase.Delete(session.Value)
+	_, err = sh.sessionUsecase.Delete(context.Background(), &auth.SessionID{ID: session.Value})
 	if err != nil {
 		logger.Warnf("can not delete session: %s", err.Error())
 		w.WriteHeader(http.StatusOK)

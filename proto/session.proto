@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package auth;
+option go_package = "./.;auth";
+
+// protoc --go_out=./generated/ --go_opt=paths=source_relative \
+//      --go-grpc_out=./generated/ --go-grpc_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false \
+//     ./session.proto
+
+message UserID {
+  int64 ID = 1;
+}
+
+message SessionID {
+  string ID = 1;
+}
+
+message Result {
+  int64 UserID = 1;
+  string SessionID = 2;
+  google.protobuf.Timestamp ExpireAt = 3;
+}
+
+message Nothing {
+  bool dummy = 1;
+}
+
+service Auth {
+  rpc Check(SessionID) returns (Result);
+  rpc Create(UserID) returns (Result);
+  rpc Delete(SessionID) returns (Nothing);
+}

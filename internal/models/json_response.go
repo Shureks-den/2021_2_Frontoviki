@@ -42,7 +42,8 @@ type HttpBodyInterface struct {
 }
 
 type HttpBodyProfile struct {
-	Profile Profile `json:"profile"`
+	Profile Profile    `json:"profile"`
+	Rating  RatingStat `json:"rating"`
 }
 
 type HttpBodyAdverts struct {
@@ -58,13 +59,15 @@ type HttpBodyAdvert struct {
 }
 
 type HttpBodyAdvertDetail struct {
-	Advert   Advert  `json:"advert"`
-	Salesman Profile `json:"salesman"`
+	Advert   Advert     `json:"advert"`
+	Salesman Profile    `json:"salesman"`
+	Rating   RatingStat `json:"rating"`
 }
 
 type HttpBodySalesmanPage struct {
 	Salesman Profile        `json:"salesman"`
 	Adverts  []*AdvertShort `json:"adverts"`
+	Rating   RatingStat     `json:"rating"`
 }
 
 type HttpBodyCartAll struct {
@@ -85,4 +88,12 @@ type HttpBodyOrder struct {
 
 type HttpBodyCategories struct {
 	Categories []*Category `json:"categories"`
+}
+
+type HttpBodyChatHistory struct {
+	Messages []*Message `json:"messages"`
+}
+
+type HttpBodyDialogs struct {
+	Dialogs []*Dialog `json:"dialogs"`
 }

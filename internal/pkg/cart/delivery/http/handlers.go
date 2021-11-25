@@ -41,9 +41,8 @@ func (ch *CartHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) 
 
 	s.HandleFunc("/one", ch.UpdateOneAdvertHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("", ch.UpdateAllCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	s.HandleFunc("", ch.GetCartHandler).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("", middleware.SetSCRFToken(http.HandlerFunc(ch.GetCartHandler))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/clear", ch.ClearCartHandler).Methods(http.MethodPost, http.MethodOptions)
-	// s.HandleFunc("/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 	s.HandleFunc("/{id:[0-9]+}/checkout", ch.CheckoutHandler).Methods(http.MethodPost, http.MethodOptions)
 }
 
@@ -83,7 +82,7 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	advert, err := ch.advertUsecase.GetAdvert(cartInputed.AdvertId)
+	advert, err := ch.advertUsecase.GetAdvert(cartInputed.AdvertId, userId, false)
 	if err != nil {
 		logger.Warnf("unable to get the advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -145,7 +144,7 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 
 	adverts := make([]*models.Advert, 0, len(cartInputed))
 	for _, element := range cartInputed {
-		advert, err := ch.advertUsecase.GetAdvert(element.AdvertId)
+		advert, err := ch.advertUsecase.GetAdvert(element.AdvertId, userId, false)
 		if err != nil {
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
@@ -196,10 +195,13 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	archived_advert := make([]int64, 0)
 	adverts := make([]*models.Advert, 0)
 	for _, e := range cart {
-		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId)
-		if err != nil {
+		advert, err := ch.advertUsecase.GetAdvert(e.AdvertId, userId, false)
+		if err == internalError.EmptyQuery {
+			archived_advert = append(archived_advert, e.AdvertId)
+		} else if err != nil {
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
@@ -208,6 +210,18 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		adverts = append(adverts, advert)
+	}
+
+	if len(archived_advert) != 0 {
+		s := ""
+		for _, i := range archived_advert {
+			s += strconv.FormatInt(i, 10) + " "
+		}
+
+		logger.Warnf("cart contain archived advert")
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusConflict, "cart contain archived advert: "+s, nil))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -280,7 +294,7 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	advert, err := ch.advertUsecase.GetAdvert(advertId)
+	advert, err := ch.advertUsecase.GetAdvert(advertId, userId, false)
 	if err != nil {
 		logger.Warnf("error with getting advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)

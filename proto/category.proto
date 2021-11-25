@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package category;
+option go_package = "./.;category";
+
+// protoc --go_out=./generated/ --go_opt=paths=source_relative \
+//      --go-grpc_out=./generated/ --go-grpc_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false \
+//     ./category.proto
+
+message _Category {
+    string Name = 1;
+}
+
+message Categories {
+    repeated _Category Categories = 1;
+}
+
+message Nothing {
+  bool dummy = 1;
+}
+
+service Category {
+  rpc GetCategories(Nothing) returns (Categories);
+}

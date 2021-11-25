@@ -50,7 +50,7 @@ func TestCartSuccess(t *testing.T) {
 
 	newCart := models.NewCart(10, &cartHandler)
 
-	au.On("GetAdvert", cartHandler.AdvertId).Return(&ad, nil)
+	au.On("GetAdvert", cartHandler.AdvertId, int64(0), false).Return(&ad, nil)
 	cu.On("UpdateCart", int64(0), &cartHandler, ad.Amount).Return(newCart, nil)
 
 	reqBodyBuffer := new(bytes.Buffer)
@@ -91,7 +91,7 @@ func TestCartFailGetAd(t *testing.T) {
 		Amount:   8,
 	}
 
-	au.On("GetAdvert", cartHandler.AdvertId).Return(nil, myerr.EmptyQuery)
+	au.On("GetAdvert", cartHandler.AdvertId, int64(0), false).Return(nil, myerr.EmptyQuery)
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(cartHandler)
@@ -165,7 +165,7 @@ func TestCartFailUpdateAd(t *testing.T) {
 		Amount: cartHandler.Amount,
 	}
 
-	au.On("GetAdvert", cartHandler.AdvertId).Return(&ad, nil)
+	au.On("GetAdvert", cartHandler.AdvertId, int64(0), false).Return(&ad, nil)
 	cu.On("UpdateCart", int64(0), &cartHandler, ad.Amount).Return(nil, myerr.InternalError)
 
 	reqBodyBuffer := new(bytes.Buffer)
@@ -230,7 +230,7 @@ func TestUpdateAllCartSuccess(t *testing.T) {
 		Amount: cartH[0].Amount,
 	}
 
-	au.On("GetAdvert", cartH[0].AdvertId).Return(&ad, nil)
+	au.On("GetAdvert", cartH[0].AdvertId, int64(0), false).Return(&ad, nil)
 	cu.On("UpdateAllCart", int64(0), mock.AnythingOfType("[]*models.CartHandler"), mock.AnythingOfType("[]*models.Advert")).Return(cart, ads, []string{"ok"}, nil)
 
 	reqBodyBuffer := new(bytes.Buffer)
@@ -300,7 +300,7 @@ func TestUpdateAllCartFailGetAd(t *testing.T) {
 		},
 	}
 
-	au.On("GetAdvert", cartH[0].AdvertId).Return(nil, myerr.InternalError)
+	au.On("GetAdvert", cartH[0].AdvertId, int64(0), false).Return(nil, myerr.InternalError)
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(cartH)
@@ -348,7 +348,7 @@ func TestUpdateAllCartFailUpdateAllCart(t *testing.T) {
 		Amount: cartH[0].Amount,
 	}
 
-	au.On("GetAdvert", cartH[0].AdvertId).Return(&ad, nil)
+	au.On("GetAdvert", cartH[0].AdvertId, int64(0), false).Return(&ad, nil)
 	cu.On("UpdateAllCart", int64(0), mock.AnythingOfType("[]*models.CartHandler"), mock.AnythingOfType("[]*models.Advert")).Return(nil, nil, nil, myerr.InternalError)
 
 	reqBodyBuffer := new(bytes.Buffer)
@@ -401,7 +401,7 @@ func TestGetAllCartSuccess(t *testing.T) {
 	}
 
 	cu.On("GetCart", cart[0].UserId).Return(cart, nil)
-	au.On("GetAdvert", cart[0].AdvertId).Return(ads[0], nil)
+	au.On("GetAdvert", cart[0].AdvertId, int64(0), false).Return(ads[0], nil)
 
 	res, err := http.Get(fmt.Sprintf("%s/cart", srv.URL))
 	assert.Nil(t, err)
@@ -470,7 +470,7 @@ func TestGetAllCartFailGetAd(t *testing.T) {
 	}
 
 	cu.On("GetCart", cart[0].UserId).Return(cart, nil)
-	au.On("GetAdvert", cart[0].AdvertId).Return(nil, myerr.InternalError)
+	au.On("GetAdvert", cart[0].AdvertId, int64(0), false).Return(nil, myerr.InternalError)
 
 	res, err := http.Get(fmt.Sprintf("%s/cart", srv.URL))
 	assert.Nil(t, err)
@@ -588,11 +588,10 @@ func TestCheckoutSuccess(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)
-	au.On("GetAdvert", ad.Id).Return(&ad, nil)
+	au.On("GetAdvert", ad.Id, int64(0), false).Return(&ad, nil)
 	uu.On("GetById", cart.UserId).Return(&profile, nil)
 	cu.On("MakeOrder", &cart, &ad).Return(nil)
 
@@ -701,7 +700,7 @@ func TestCheckoutFailGetAd(t *testing.T) {
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)
-	au.On("GetAdvert", ad.Id).Return(nil, myerr.InternalError)
+	au.On("GetAdvert", ad.Id, int64(0), false).Return(nil, myerr.InternalError)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/cart/2/checkout", srv.URL), nil)
@@ -743,7 +742,7 @@ func TestCheckoutFailGetById(t *testing.T) {
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)
-	au.On("GetAdvert", ad.Id).Return(&ad, nil)
+	au.On("GetAdvert", ad.Id, int64(0), false).Return(&ad, nil)
 	uu.On("GetById", cart.UserId).Return(nil, myerr.InternalError)
 
 	client := &http.Client{}
@@ -790,11 +789,10 @@ func TestCheckoutFailMakeOrder(t *testing.T) {
 		Id:        0,
 		Email:     "aboba@baobab.com",
 		CreatedAt: time.Now(),
-		Rating:    5,
 	}
 
 	cu.On("GetOrderFromCart", cart.UserId, cart.AdvertId).Return(&cart, nil)
-	au.On("GetAdvert", ad.Id).Return(&ad, nil)
+	au.On("GetAdvert", ad.Id, int64(0), false).Return(&ad, nil)
 	uu.On("GetById", cart.UserId).Return(&profile, nil)
 	cu.On("MakeOrder", &cart, &ad).Return(myerr.InternalError)
 

@@ -35,15 +35,22 @@ func (au *AdvtUsecase) CreateAdvert(userId int64, advert *models.Advert) error {
 	return err
 }
 
-func (au *AdvtUsecase) GetAdvert(advertId int64) (*models.Advert, error) {
+func (au *AdvtUsecase) GetAdvert(advertId, userId int64, updateViews bool) (*models.Advert, error) {
 	advert, err := au.advtRepository.SelectById(advertId)
 
-	if err == nil && len(advert.Images) == 0 {
+	if err != nil {
+		return nil, err
+	}
+
+	if len(advert.Images) == 0 {
 		advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
 	}
 
-	// инкрементировать просмотр каждый раз когда кто-то смотрит ???
-
+	// инкрементировать просмотр каждый раз когда кто-то смотрит под флагом
+	// и смотрящий - не владелец объявления
+	if updateViews && userId != advert.PublisherId {
+		err = au.advtRepository.UpdateViews(advertId)
+	}
 	return advert, err
 }
 
@@ -70,7 +77,7 @@ func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) er
 }
 
 func (au *AdvtUsecase) DeleteAdvert(advertId int64, userId int64) error {
-	advert, err := au.GetAdvert(advertId)
+	advert, err := au.GetAdvert(advertId, userId, false)
 	if err != nil {
 		return err
 	}
@@ -84,7 +91,7 @@ func (au *AdvtUsecase) DeleteAdvert(advertId int64, userId int64) error {
 }
 
 func (au *AdvtUsecase) CloseAdvert(advertId int64, userId int64) error {
-	advert, err := au.GetAdvert(advertId)
+	advert, err := au.GetAdvert(advertId, userId, false)
 	if err != nil {
 		return err
 	}
@@ -116,18 +123,37 @@ func (au *AdvtUsecase) UploadImages(files []*multipart.FileHeader, advertId int6
 	}
 
 	oldImages := advert.Images
-	err = au.advtRepository.EditImages(advertId, imageUrls)
+	err = au.advtRepository.InsertImages(advertId, imageUrls)
 	if err != nil {
 		return nil, err
 	}
-	advert.Images = imageUrls
+	advert.Images = append(oldImages, imageUrls...)
 
-	err = au.imageLoaderUsecase.RemoveAdvertImages(oldImages)
-	if err != nil {
-		return nil, err
-	}
+	// err = au.imageLoaderUsecase.RemoveAdvertImages(oldImages)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return advert, nil
+}
+
+func (au *AdvtUsecase) RemoveImages(images []string, advertId, userId int64) error {
+	advert, err := au.advtRepository.SelectById(advertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId {
+		return internalError.Conflict
+	}
+
+	err = au.advtRepository.DeleteImages(images, advertId)
+	if err != nil {
+		return err
+	}
+
+	err = au.imageLoaderUsecase.RemoveAdvertImages(images)
+	return err
 }
 
 func (au *AdvtUsecase) GetAdvertListByPublicherId(publisherId int64, is_active bool, page *models.Page) ([]*models.Advert, error) {
@@ -150,4 +176,38 @@ func (au *AdvtUsecase) GetAdvertListByCategory(categoryName string, page *models
 	}
 
 	return adverts, nil
+}
+
+func (au *AdvtUsecase) GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error) {
+	adverts, err := au.advtRepository.SelectFavoriteAdverts(userId, page.PageNum, page.Count)
+	if err == nil || err == internalError.EmptyQuery {
+		return adverts, nil
+	}
+
+	return nil, err
+}
+
+func (au *AdvtUsecase) AddFavorite(userId int64, advertId int64) error {
+	_, err := au.advtRepository.SelectFavorite(userId, advertId)
+	switch err {
+	case internalError.EmptyQuery:
+		err = au.advtRepository.InsertFavorite(userId, advertId)
+		return err
+	}
+	return err
+}
+
+func (au *AdvtUsecase) RemoveFavorite(userId int64, advertId int64) error {
+	_, err := au.advtRepository.SelectFavorite(userId, advertId)
+	switch err {
+	case nil:
+		err = au.advtRepository.DeleteFavorite(userId, advertId)
+		return err
+	}
+	return err
+}
+
+func (au *AdvtUsecase) GetAdvertViews(advertId int64) (int64, error) {
+	views, err := au.advtRepository.SelectViews(advertId)
+	return views, err
 }

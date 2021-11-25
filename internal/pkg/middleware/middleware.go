@@ -10,10 +10,11 @@ import (
 	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
-	"yula/internal/pkg/session"
+	session "yula/services/auth"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/csrf"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -69,6 +70,26 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 	})
 }
 
+func (sm *SessionMiddleware) SoftCheckAuthorized(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_id")
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		session, err := sm.sessionUsecase.Check(cookie.Value)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctxId := context.WithValue(r.Context(), ContextUserId, session.UserId)
+		r = r.WithContext(ctxId)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -91,7 +112,8 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 		relativePath := r.URL.Path
 		contentType := r.Header.Get("Content-Type")
 
-		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/upload$", relativePath)
+		isImageUpload, _ := regexp.MatchString("^/adverts/[0-9]+/images$", relativePath)
+		isImageUpload = isImageUpload && (r.Method == "POST")
 
 		switch {
 		case relativePath == "/users/profile/upload", isImageUpload:
@@ -102,6 +124,9 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: multipart/form-data required", nil))
 				return
 			}
+
+		case strings.Contains(relativePath, "/connect"):
+			break
 
 		default:
 			if contentType != "application/json" {
@@ -128,6 +153,15 @@ func LoggerMiddleware(next http.Handler) http.Handler {
 			})
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func Routing(r *mux.Router) {
+	r.HandleFunc("/csrf", SetSCRFToken(http.HandlerFunc(CSRFHandler))).Methods(http.MethodGet, http.MethodOptions)
+}
+
+func CSRFHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "csrf setted", nil))
 }
 
 func SetSCRFToken(next http.Handler) http.HandlerFunc {
