@@ -34,17 +34,18 @@ func NewSearchFilter(values *url.Values) (*SearchFilter, error) {
 	}
 	sf.Query = query
 	sf.Category = values.Get("category")
-	sf.Date = time.Now()
 	parse := values.Get("time_duration")
 	switch parse {
 	case "":
 		sf.TimeDuration = TimeDurationNone
+		sf.Date = time.Time{}
 	default:
 		tmp, err := strconv.ParseInt(parse, 10, 64)
 		if err != nil {
 			return nil, internalError.BadRequest
 		}
 		sf.TimeDuration = tmp
+		sf.Date = time.Now()
 	}
 
 	parse = values.Get("longitude")
