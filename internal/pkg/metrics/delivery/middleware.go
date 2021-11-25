@@ -1,8 +1,10 @@
 package delivery
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"yula/internal/pkg/metrics"
 
@@ -26,6 +28,7 @@ func (mm *MetricsMiddleware) ScanMetrics(next http.Handler) http.Handler {
 		next.ServeHTTP(nrw, r)
 		if r.URL.Path != "/metrics" {
 			path := r.URL.Path
+			path = fmt.Sprintf("/%s*", strings.Split(path, "/")[1])
 			mm.metric.Hits.WithLabelValues(strconv.Itoa(nrw.Status()), path, r.Method).Inc()
 			mm.metric.Timings.WithLabelValues(strconv.Itoa(nrw.Status()), path, r.Method).Observe(float64(time.Since(start).Seconds()))
 		}
