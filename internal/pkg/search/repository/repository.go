@@ -33,7 +33,7 @@ func (sr *SearchRepository) SelectWithFilter(search *models.SearchFilter, from, 
 			GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name
 		) as t
-		WHERE a.is_active AND plainto_tsquery($%d) @@ (to_tsvector(t.name_) || to_tsvector(t.description)) 
+		WHERE t.is_active AND plainto_tsquery($%d) @@ (to_tsvector(t.name_) || to_tsvector(t.description)) 
 	`
 	nums = append(nums, 1+len(nums))
 	vars = append(vars, search.Query)
