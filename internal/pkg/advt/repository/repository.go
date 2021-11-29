@@ -334,6 +334,7 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 				a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new 
 		HAVING a.is_active = true
+		ORDER BY a.published_at DESC
 		LIMIT $2 OFFSET $3;
 	`
 	query, err := ar.DB.QueryContext(context.Background(), queryStr, categoryName, count, from*count)
