@@ -56,3 +56,6 @@ build
 
 # config files
 config*.yml
+
+# local metrics
+metricsProd
