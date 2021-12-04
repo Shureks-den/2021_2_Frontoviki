@@ -14,6 +14,7 @@ import (
 
 	imageloaderRepo "yula/internal/pkg/image_loader/repository"
 	imageloaderUse "yula/internal/pkg/image_loader/usecase"
+
 	"yula/internal/pkg/logging"
 	userHttp "yula/internal/pkg/user/delivery/http"
 	userRep "yula/internal/pkg/user/repository"
@@ -122,15 +123,11 @@ func main() {
 		return
 	}
 
-	// cnfg := config.NewConfig()
-
 	sqlDB := getPostgres(config.Cfg.GetPostgresUrl())
 	defer sqlDB.Close()
 
 	r := mux.NewRouter()
-
 	r.PathPrefix("/swagger").HandlerFunc(httpSwagger.WrapHandler)
-
 	api := r.PathPrefix("").Subrouter()
 
 	// ставим мидлварину с метриками

@@ -73,6 +73,10 @@ type config struct {
 			}
 		}
 	}
+
+	Compressor struct {
+		StaticDirs []string
+	}
 }
 
 var (
@@ -202,4 +206,8 @@ func (c *config) GetHTTPSCrt() string {
 
 func (c *config) GetHTTPSKey() string {
 	return c.Certificates.Https.Key.Path
+}
+
+func (c *config) GetStaticDirs() []string {
+	return c.Compressor.StaticDirs
 }

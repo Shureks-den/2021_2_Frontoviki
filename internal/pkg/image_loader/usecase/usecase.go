@@ -40,14 +40,15 @@ func (ilu *ImageLoaderUsecase) Upload(headerFile *multipart.FileHeader, dir stri
 	}
 
 	timestamp := time.Now().UnixMicro()
-	filename := fmt.Sprintf("%s.%s", strconv.FormatInt(timestamp, 10), extension)
+	name := fmt.Sprintf("%s__%s", strconv.FormatInt(timestamp, 10), extension)
+	filename := fmt.Sprintf("%s.%s", name, extension)
 
 	err := ilu.imageLoaderRepo.Insert(headerFile, dir, filename)
 	if err != nil {
 		return "", err
 	}
 
-	return dir + "/" + filename, nil
+	return dir + "/" + name, nil
 }
 
 func (ilu *ImageLoaderUsecase) UploadAvatar(headerFile *multipart.FileHeader) (string, error) {
