@@ -311,6 +311,7 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		dialogs = append(dialogs, &models.HttpDialog{
+			Id:        user2.Id,
 			Name:      user2.Name,
 			Surname:   user2.Surname,
 			Adv:       *shortAd,

@@ -96,6 +96,7 @@ type HttpBodyChatHistory struct {
 }
 
 type HttpDialog struct {
+	Id      int64  `json:"id" valid:"int"`
 	Name    string `json:"name" valid:"type(string)"`
 	Surname string `json:"surname" valid:"type(string)"`
 
