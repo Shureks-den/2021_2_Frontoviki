@@ -97,3 +97,7 @@ type HttpBodyChatHistory struct {
 type HttpBodyDialogs struct {
 	Dialogs []*Dialog `json:"dialogs"`
 }
+
+type HttpBodyPriceHistory struct {
+	History []*AdvertPrice `json:"history"`
+}

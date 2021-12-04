@@ -211,3 +211,28 @@ func (au *AdvtUsecase) GetAdvertViews(advertId int64) (int64, error) {
 	views, err := au.advtRepository.SelectViews(advertId)
 	return views, err
 }
+
+func (au *AdvtUsecase) UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error {
+	advert, err := au.advtRepository.SelectById(adPrice.AdvertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId || adPrice.Price < 0 {
+		return internalError.Conflict
+	}
+
+	advert.Price = int(adPrice.Price)
+	err = au.advtRepository.Update(advert)
+	if err != nil {
+		return err
+	}
+
+	err = au.advtRepository.UpdatePrice(adPrice)
+	return err
+}
+
+func (au *AdvtUsecase) GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	priceHistory, err := au.advtRepository.SelectPriceHistory(advertId)
+	return priceHistory, err
+}

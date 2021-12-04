@@ -28,4 +28,7 @@ type AdvtUsecase interface {
 	RemoveFavorite(userId int64, advertId int64) error
 
 	GetAdvertViews(advertId int64) (int64, error)
+
+	GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error)
+	UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error
 }

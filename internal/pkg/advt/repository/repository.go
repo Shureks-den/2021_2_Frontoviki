@@ -102,6 +102,17 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		return internalError.GenInternalError(err)
 	}
 
+	// вставляем начальную цену в таблицу истории цен
+	queryStr = "INSERT INTO price_history (advert_id, price) VALUES ($1, $2);"
+	_, err = ar.DB.Exec(queryStr, advert.Id, advert.Price)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
@@ -541,4 +552,55 @@ func (ar *AdvtRepository) UpdateViews(advertId int64) error {
 	}
 
 	return nil
+}
+
+func (ar *AdvtRepository) UpdatePrice(advertPrice *models.AdvertPrice) error {
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	_, err = tx.ExecContext(context.Background(),
+		"INSERT INTO price_history (advert_id, price) VALUES ($1, $2);", advertPrice.AdvertId, advertPrice.Price)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) SelectPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	queryStr := `
+					SELECT advert_id, price, change_date 
+					FROM price_history 
+					WHERE advert_id = $1
+					ORDER BY change_date ASC;
+				`
+	query, err := ar.DB.QueryContext(context.Background(), queryStr, advertId)
+	if err != nil {
+		return nil, internalError.GenInternalError(err)
+	}
+
+	defer query.Close()
+	history := make([]*models.AdvertPrice, 0)
+	for query.Next() {
+		var price models.AdvertPrice
+
+		err = query.Scan(&price.AdvertId, &price.Price, &price.ChangeTime)
+		if err != nil {
+			return nil, internalError.GenInternalError(err)
+		}
+
+		history = append(history, &price)
+	}
+	return history, nil
 }

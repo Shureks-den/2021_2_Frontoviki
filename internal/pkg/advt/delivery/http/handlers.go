@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"path"
@@ -56,6 +57,9 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/favorite", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.FavoriteListHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
+
+	s.Handle("/price_history", sm.CheckAuthorized(http.HandlerFunc(ah.UpdatePriceHistory))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/price_history/{id:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.GetPriceHistory)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
@@ -819,4 +823,69 @@ func (ah *AdvertHandler) RemoveFavoriteHandler(w http.ResponseWriter, r *http.Re
 
 	w.WriteHeader(http.StatusOK)
 	w.Write(models.ToBytes(http.StatusOK, "removed from favorite", nil))
+}
+
+func (ah *AdvertHandler) UpdatePriceHistory(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	defer r.Body.Close()
+	adPrice := &models.AdvertPrice{}
+	err := json.NewDecoder(r.Body).Decode(&adPrice)
+	if err != nil {
+		logger.Warnf("can not decode price: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(adPrice)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		return
+	}
+
+	err = ah.advtUsecase.UpdateAdvertPrice(userId, adPrice)
+	if err != nil {
+		logger.Warnf("can not decode images: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, fmt.Sprintf("price of %d advert updated", adPrice.AdvertId), nil))
+}
+
+func (ah *AdvertHandler) GetPriceHistory(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	priceHistory, err := ah.advtUsecase.GetPriceHistory(advertId)
+	if err != nil {
+		logger.Warnf("can not get price history of advert %d: %s", advertId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyPriceHistory{History: priceHistory}
+	w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
 }

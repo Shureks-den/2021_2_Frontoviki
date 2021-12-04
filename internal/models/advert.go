@@ -79,3 +79,9 @@ func NewPage(pageNumS string, countS string) (*Page, error) {
 type AdvertImages struct {
 	ImagesPath []string `json:"images"`
 }
+
+type AdvertPrice struct {
+	AdvertId   int64     `json:"advert_id" valid:"-"`
+	Price      int64     `json:"price" valid:"numeric"`
+	ChangeTime time.Time `json:"change_time" valid:"-"`
+}
