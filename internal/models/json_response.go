@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 var defaultJsonAnswer string = fmt.Sprintf(
@@ -94,8 +95,17 @@ type HttpBodyChatHistory struct {
 	Messages []*Message `json:"messages"`
 }
 
+type HttpDialog struct {
+	Name    string `json:"name" valid:"type(string)"`
+	Surname string `json:"surname" valid:"type(string)"`
+
+	Adv AdvertShort `json:"adv_info"`
+
+	CreatedAt time.Time `json:"created_at" valid:"-" swaggerignore:"true"`
+}
+
 type HttpBodyDialogs struct {
-	Dialogs []*Dialog `json:"dialogs"`
+	Dialogs []*HttpDialog `json:"dialogs"`
 }
 
 type HttpBodyPriceHistory struct {

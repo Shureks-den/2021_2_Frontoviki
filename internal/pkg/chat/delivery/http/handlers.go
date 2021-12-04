@@ -7,12 +7,15 @@ import (
 	"net/url"
 	"strconv"
 	"yula/internal/models"
+	"yula/internal/pkg/advt"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
+	"yula/internal/pkg/user"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	proto "yula/proto/generated/chat"
 
@@ -33,12 +36,16 @@ type ChatSession struct {
 }
 
 type ChatHandler struct {
-	chatUsecase proto.ChatClient
+	cu proto.ChatClient
+	au advt.AdvtUsecase
+	uu user.UserUsecase
 }
 
-func NewChatHandler(cu proto.ChatClient) *ChatHandler {
+func NewChatHandler(cu proto.ChatClient, au advt.AdvtUsecase, uu user.UserUsecase) *ChatHandler {
 	return &ChatHandler{
-		chatUsecase: cu,
+		cu: cu,
+		au: au,
+		uu: uu,
 	}
 }
 
@@ -111,11 +118,14 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 			return
 		}
 
-		ch.chatUsecase.Create(context.Background(), &proto.Message{
-			IdFrom: session.idFrom,
-			IdTo:   session.idTo,
-			IdAdv:  session.idAdv,
-			Msg:    string(msg),
+		ch.cu.Create(context.Background(), &proto.Message{
+			MI: &proto.MessageIdentifier{
+				IdFrom: session.idFrom,
+				IdTo:   session.idTo,
+				IdAdv:  session.idAdv,
+			},
+			Msg:       string(msg),
+			CreatedAt: timestamppb.Now(),
 		})
 
 		key := fmt.Sprintf("%d->%d:%d", session.idTo, session.idFrom, session.idAdv)
@@ -160,17 +170,18 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	protomessages, err := ch.chatUsecase.GetHistory(context.Background(), &proto.GetHistoryArg{
+	protomessages, err := ch.cu.GetHistory(context.Background(), &proto.GetHistoryArg{
 		DI: &proto.DialogIdentifier{
-			IdFrom: idFrom,
-			IdTo:   idTo,
-			IdAdv:  idAdv,
+			Id1:   idFrom,
+			Id2:   idTo,
+			IdAdv: idAdv,
 		},
 		FP: &proto.FilterParams{
 			Offset: page.PageNum * page.Count,
 			Limit:  page.Count,
 		},
 	})
+
 	if err != nil {
 		logger.Warnf("get history chat error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -183,9 +194,11 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 	var messages []*models.Message
 	for _, message := range protomessages.M {
 		messages = append(messages, &models.Message{
-			IdFrom:    message.IdFrom,
-			IdTo:      message.IdTo,
-			IdAdv:     message.IdAdv,
+			MI: models.IMessage{
+				IdFrom: message.MI.IdFrom,
+				IdTo:   message.MI.IdTo,
+				IdAdv:  message.MI.IdAdv,
+			},
 			Msg:       message.Msg,
 			CreatedAt: message.CreatedAt.AsTime(),
 		})
@@ -221,10 +234,10 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = ch.chatUsecase.Clear(context.Background(), &proto.DialogIdentifier{
-		IdFrom: idFrom,
-		IdTo:   idTo,
-		IdAdv:  idAdv,
+	_, err = ch.cu.Clear(context.Background(), &proto.DialogIdentifier{
+		Id1:   idFrom,
+		Id2:   idTo,
+		IdAdv: idAdv,
 	})
 
 	if err != nil {
@@ -253,7 +266,7 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	protodialogs, err := ch.chatUsecase.GetDialogs(context.Background(), &proto.UserIdentifier{IdFrom: idFrom})
+	protodialogs, err := ch.cu.GetDialogs(context.Background(), &proto.UserIdentifier{IdFrom: idFrom})
 	if err != nil {
 		logger.Warnf("get dialogs error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
@@ -263,12 +276,44 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var dialogs []*models.Dialog
+	var dialogs []*models.HttpDialog
 	for _, dialog := range protodialogs.D {
-		dialogs = append(dialogs, &models.Dialog{
-			Id1:       dialog.Id1,
-			Id2:       dialog.Id2,
-			IdAdv:     dialog.IdAdv,
+		shortAd := &models.AdvertShort{
+			Id:       -1,
+			Name:     "dummy",
+			Price:    -1,
+			Location: "dummy",
+			Image:    "dummy",
+		}
+
+		if dialog.DI.IdAdv != -1 {
+			ad, err := ch.au.GetAdvert(dialog.DI.IdAdv, -1, false)
+			if err != nil {
+				logger.Warnf("get adv error: %s", err.Error())
+				w.WriteHeader(http.StatusOK)
+
+				metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
+				w.Write(models.ToBytes(metaCode, metaMessage, nil))
+				return
+			}
+
+			shortAd = ad.ToShort()
+		}
+
+		user2, err := ch.uu.GetById(dialog.DI.Id2)
+		if err != nil {
+			logger.Warnf("get user error: %s", err.Error())
+			w.WriteHeader(http.StatusOK)
+
+			metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
+			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			return
+		}
+
+		dialogs = append(dialogs, &models.HttpDialog{
+			Name:      user2.Name,
+			Surname:   user2.Surname,
+			Adv:       *shortAd,
 			CreatedAt: dialog.CreatedAt.AsTime(),
 		})
 	}
