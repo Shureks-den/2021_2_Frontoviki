@@ -18,6 +18,17 @@ func NewChatUsecase(repo chat.ChatRepository) chat.ChatUsecase {
 	}
 }
 
+func (cu *ChatUsecase) CreateDialog(dialog *models.Dialog) error {
+	_, err := cu.chatRepo.SelectDialog(dialog.ToIDialog())
+	if err == internalError.EmptyQuery {
+		err = cu.chatRepo.InsertDialog(dialog)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
 func (cu *ChatUsecase) Create(message *models.Message) error {
 	dialog12 := &models.IDialog{
 		Id1:   message.MI.IdFrom,
@@ -32,10 +43,6 @@ func (cu *ChatUsecase) Create(message *models.Message) error {
 	}
 
 	_, err := cu.chatRepo.SelectDialog(dialog12)
-	if err != nil && err != internalError.EmptyQuery {
-		return err
-	}
-
 	if err == internalError.EmptyQuery {
 		err = cu.chatRepo.InsertDialog(dialog12.ToDialog(time.Now()))
 		if err != nil {
@@ -44,10 +51,6 @@ func (cu *ChatUsecase) Create(message *models.Message) error {
 	}
 
 	_, err = cu.chatRepo.SelectDialog(dialog21)
-	if err != nil && err != internalError.EmptyQuery {
-		return err
-	}
-
 	if err == internalError.EmptyQuery {
 		err = cu.chatRepo.InsertDialog(dialog21.ToDialog(time.Now()))
 		if err != nil {

@@ -57,11 +57,50 @@ var upgrader = websocket.Upgrader{
 func (ch *ChatHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	s := r.PathPrefix("/chat").Subrouter()
 	s.HandleFunc("/connect/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ch.ConnectHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/createDialog/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ch.CreateDialog))).Methods(http.MethodPost, http.MethodOptions)
 
 	s.HandleFunc("/getDialogs/{idFrom:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ch.getDialogsHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/getHistory/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ch.getHistoryHandler)))).Methods(http.MethodGet, http.MethodOptions)
 
 	s.Handle("/clear/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ch.ClearHandler))).Methods(http.MethodPost, http.MethodOptions)
+}
+
+func (ch *ChatHandler) CreateDialog(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+
+	vars := mux.Vars(r)
+	idFrom, _ := strconv.ParseInt(vars["idFrom"], 10, 64)
+	idTo, err := strconv.ParseInt(vars["idTo"], 10, 64)
+	idAdv, _ := strconv.ParseInt(vars["idAdv"], 10, 64)
+
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = ch.cu.CreateDialog(context.Background(), &proto.Dialog{
+		DI: &proto.DialogIdentifier{
+			Id1:   idFrom,
+			Id2:   idTo,
+			IdAdv: idAdv,
+		},
+		CreatedAt: timestamppb.Now(),
+	})
+
+	if err != nil {
+		logger.Warnf("create dialog error: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "dialog create success", nil))
+	logger.Info("dialog create success")
 }
 
 func (ch *ChatHandler) ConnectHandler(w http.ResponseWriter, r *http.Request) {

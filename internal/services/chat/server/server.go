@@ -101,6 +101,25 @@ func (s *ChatServer) Create(ctx context.Context, message *proto.Message) (*proto
 	}, nil
 }
 
+func (s *ChatServer) CreateDialog(ctx context.Context, dialog *proto.Dialog) (*proto.Nothing, error) {
+	err := s.cu.CreateDialog(&models.Dialog{
+		DI: models.IDialog{
+			Id1:   dialog.DI.Id1,
+			Id2:   dialog.DI.Id2,
+			IdAdv: dialog.DI.IdAdv,
+		},
+		CreatedAt: dialog.CreatedAt.AsTime(),
+	})
+	if err != nil {
+		s.logger.Errorf("can not create dialog from %d to %d on %d, err = %v", dialog.DI.Id1, dialog.DI.Id2, dialog.DI.IdAdv, err)
+		return &proto.Nothing{Dummy: false}, err
+	}
+
+	return &proto.Nothing{
+		Dummy: true,
+	}, nil
+}
+
 func (s *ChatServer) Clear(ctx context.Context, DI *proto.DialogIdentifier) (*proto.Nothing, error) {
 	err := s.cu.Clear(&models.IDialog{
 		Id1:   DI.Id1,

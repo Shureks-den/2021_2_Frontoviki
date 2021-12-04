@@ -61,6 +61,7 @@ message Nothing {
 service Chat {
   rpc GetHistory(GetHistoryArg) returns (Messages);
   rpc Create(Message) returns (Nothing);
+  rpc CreateDialog(Dialog) returns (Nothing);
   rpc Clear(DialogIdentifier) returns (Nothing);
   rpc GetDialogs(UserIdentifier) returns (Dialogs);
 }
