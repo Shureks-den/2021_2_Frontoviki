@@ -174,7 +174,7 @@ func main() {
 	uh := userHttp.NewUserHandler(uu, authProto.NewAuthClient(grpcAuthClient))
 	sh := sessHttp.NewSessionHandler(authProto.NewAuthClient(grpcAuthClient), uu)
 	cath := categoryHttp.NewCategoryHandler(categoryProto.NewCategoryClient(grpcCategoryClient))
-	chth := chatHttp.NewChatHandler(chatProto.NewChatClient(grpcChatClient))
+	chth := chatHttp.NewChatHandler(chatProto.NewChatClient(grpcChatClient), au, uu)
 
 	sm := middleware.NewSessionMiddleware(authProto.NewAuthClient(grpcAuthClient))
 

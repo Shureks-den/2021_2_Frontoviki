@@ -19,13 +19,13 @@ func NewChatRepository(db *sql.DB) chat.ChatRepository {
 	}
 }
 
-func (cr *ChatRepository) SelectMessages(idFrom int64, idTo int64, idAdv int64, offset int64, limit int64) ([]*models.Message, error) {
+func (cr *ChatRepository) SelectMessages(iMessage *models.IMessage, offset int64, limit int64) ([]*models.Message, error) {
 	query := `SELECT user_from, user_to, adv_id, msg, created_at FROM messages
 			  WHERE user_from IN ($1, $2) AND user_to IN ($1, $2) AND adv_id = $3
 			  ORDER BY created_at
 			  OFFSET $4 LIMIT $5;`
 
-	rows, err := cr.db.QueryContext(context.Background(), query, idFrom, idTo, idAdv, offset, limit)
+	rows, err := cr.db.QueryContext(context.Background(), query, iMessage.IdFrom, iMessage.IdTo, iMessage.IdAdv, offset, limit)
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}
@@ -34,11 +34,17 @@ func (cr *ChatRepository) SelectMessages(idFrom int64, idTo int64, idAdv int64, 
 	messages := make([]*models.Message, 0)
 	for rows.Next() {
 		message := &models.Message{}
+		var adId sql.NullInt64
+		err := rows.Scan(&message.MI.IdFrom, &message.MI.IdTo, &adId, &message.Msg, &message.CreatedAt)
 
-		err := rows.Scan(&message.IdFrom, &message.IdTo, &message.IdAdv, &message.Msg, &message.CreatedAt)
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
+
+		if !adId.Valid {
+			adId.Int64 = -1
+		}
+		message.MI.IdAdv = adId.Int64
 
 		messages = append(messages, message)
 	}
@@ -53,7 +59,7 @@ func (cr *ChatRepository) InsertMessage(message *models.Message) error {
 	}
 
 	_, err = cr.db.Exec("INSERT INTO messages(user_from, user_to, adv_id, msg) VALUES ($1, $2, $3, $4);",
-		message.IdFrom, message.IdTo, message.IdAdv, message.Msg)
+		message.MI.IdFrom, message.MI.IdTo, message.MI.IdAdv, message.Msg)
 	if err != nil {
 		rollbackError := tx.Rollback()
 		if rollbackError != nil {
@@ -70,14 +76,14 @@ func (cr *ChatRepository) InsertMessage(message *models.Message) error {
 	return nil
 }
 
-func (cr *ChatRepository) DeleteMessages(idFrom int64, idTo int64, idAdv int64) error {
+func (cr *ChatRepository) DeleteMessages(iMessage *models.IMessage) error {
 	tx, err := cr.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	_, err = cr.db.Exec("DELETE FROM messages WHERE user_from = $1 AND user_to = $2 AND adv_id = $3;",
-		idFrom, idTo, idAdv)
+		iMessage.IdFrom, iMessage.IdTo, iMessage.IdAdv)
 	if err != nil {
 		rollbackError := tx.Rollback()
 		if rollbackError != nil {
@@ -94,15 +100,15 @@ func (cr *ChatRepository) DeleteMessages(idFrom int64, idTo int64, idAdv int64) 
 	return nil
 }
 
-func (cr *ChatRepository) SelectDialog(id1 int64, id2 int64, idAdv int64) (*models.Dialog, error) {
+func (cr *ChatRepository) SelectDialog(iDialog *models.IDialog) (*models.Dialog, error) {
 	query := `SELECT user1, user2, adv_id, created_at FROM dialogs
 			  WHERE user1 = $1 AND user2 = $2 AND adv_id = $3
 			  ORDER BY created_at;`
 
-	row := cr.db.QueryRowContext(context.Background(), query, id1, id2, idAdv)
+	row := cr.db.QueryRowContext(context.Background(), query, iDialog.Id1, iDialog.Id2, iDialog.IdAdv)
 
 	dialog := &models.Dialog{}
-	err := row.Scan(&dialog.Id1, &dialog.Id2, &dialog.IdAdv, &dialog.CreatedAt)
+	err := row.Scan(&dialog.DI.Id1, &dialog.DI.Id2, &dialog.DI.IdAdv, &dialog.CreatedAt)
 	if err != nil {
 		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
 		if res {
@@ -122,7 +128,7 @@ func (cr *ChatRepository) InsertDialog(dialog *models.Dialog) error {
 	}
 
 	_, err = cr.db.Exec("INSERT INTO dialogs(user1, user2, adv_id) VALUES ($1, $2, $3);",
-		dialog.Id1, dialog.Id2, dialog.IdAdv)
+		dialog.DI.Id1, dialog.DI.Id2, dialog.DI.IdAdv)
 	if err != nil {
 		rollbackError := tx.Rollback()
 		if rollbackError != nil {
@@ -139,14 +145,14 @@ func (cr *ChatRepository) InsertDialog(dialog *models.Dialog) error {
 	return nil
 }
 
-func (cr *ChatRepository) DeleteDialog(dialog *models.Dialog) error {
+func (cr *ChatRepository) DeleteDialog(iDialog *models.IDialog) error {
 	tx, err := cr.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return internalError.GenInternalError(err)
 	}
 
 	_, err = cr.db.Exec("DELETE FROM dialogs WHERE user1 = $1 AND user2 = $2 AND adv_id = $3;",
-		dialog.Id1, dialog.Id2, dialog.IdAdv)
+		iDialog.Id1, iDialog.Id2, iDialog.IdAdv)
 
 	if err != nil {
 		rollbackError := tx.Rollback()
@@ -178,11 +184,17 @@ func (cr *ChatRepository) SelectAllDialogs(id1 int64) ([]*models.Dialog, error) 
 	dialogs := make([]*models.Dialog, 0)
 	for rows.Next() {
 		dialog := &models.Dialog{}
+		var adId sql.NullInt64
+		err := rows.Scan(&dialog.DI.Id1, &dialog.DI.Id2, &adId, &dialog.CreatedAt)
 
-		err := rows.Scan(&dialog.Id1, &dialog.Id2, &dialog.IdAdv, &dialog.CreatedAt)
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
+
+		if !adId.Valid {
+			adId.Int64 = -1
+		}
+		dialog.DI.IdAdv = adId.Int64
 
 		dialogs = append(dialogs, dialog)
 	}

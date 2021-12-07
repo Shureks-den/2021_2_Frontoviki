@@ -5,60 +5,63 @@ import "google/protobuf/timestamp.proto";
 package chat;
 option go_package = "./.;chat";
 
-// protoc --go_out=./generated/ --go_opt=paths=source_relative \
-//      --go-grpc_out=./generated/ --go-grpc_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false \
+// protoc --go_out=./generated/chat/ --go_opt=paths=source_relative \
+//      --go-grpc_out=./generated/chat/ --go-grpc_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false \
 //     ./chat.proto
 
 message DialogIdentifier {
-    int64 idFrom = 1;
-    int64 idTo = 2;
+    int64 id1 = 1;
+    int64 id2 = 2;
     int64 idAdv = 3;
 }
 
-message UserIdentifier {
-    int64 idFrom = 1;
-}
-
-message FilterParams {
-  int64 offset = 1;
-  int64 limit = 2;
-}
-
-message Message {
-  int64 IdFrom = 1;
-  int64 IdTo = 2;
-  int64 IdAdv = 3;
-  string Msg = 4;
-  google.protobuf.Timestamp CreatedAt = 5;
-}
-
-message Nothing {
-  bool dummy = 1;
-}
-
-message GetHistoryArg {
-    DialogIdentifier DI = 1;
-    FilterParams FP = 2;
-}
-
 message Dialog {
-  int64 Id1 = 1;
-  int64 Id2 = 2;
-  int64 IdAdv = 3;
-  google.protobuf.Timestamp CreatedAt = 4;
-}
-
-message Messages {
-  repeated Message m = 1;
+  DialogIdentifier DI = 1;
+  google.protobuf.Timestamp CreatedAt = 2;
 }
 
 message Dialogs {
   repeated Dialog d = 1;
 }
 
+message MessageIdentifier {
+  int64 idFrom = 1;
+  int64 idTo = 2;
+  int64 idAdv = 3;
+}
+
+message Message {
+  MessageIdentifier MI = 1;
+  string Msg = 2;
+  google.protobuf.Timestamp CreatedAt = 3;
+}
+
+message Messages {
+  repeated Message m = 1;
+}
+
+message UserIdentifier {
+  int64 idFrom = 1;
+}
+
+message FilterParams {
+int64 offset = 1;
+int64 limit = 2;
+}
+
+message GetHistoryArg {
+  DialogIdentifier DI = 1;
+  FilterParams FP = 2;
+}
+
+message Nothing {
+  bool dummy = 1;
+}
+
 service Chat {
   rpc GetHistory(GetHistoryArg) returns (Messages);
   rpc Create(Message) returns (Nothing);
+  rpc CreateDialog(Dialog) returns (Nothing);
   rpc Clear(DialogIdentifier) returns (Nothing);
   rpc GetDialogs(UserIdentifier) returns (Dialogs);
 }

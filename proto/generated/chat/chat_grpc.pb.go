@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type ChatClient interface {
 	GetHistory(ctx context.Context, in *GetHistoryArg, opts ...grpc.CallOption) (*Messages, error)
 	Create(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Nothing, error)
+	CreateDialog(ctx context.Context, in *Dialog, opts ...grpc.CallOption) (*Nothing, error)
 	Clear(ctx context.Context, in *DialogIdentifier, opts ...grpc.CallOption) (*Nothing, error)
 	GetDialogs(ctx context.Context, in *UserIdentifier, opts ...grpc.CallOption) (*Dialogs, error)
 }
@@ -50,6 +51,15 @@ func (c *chatClient) Create(ctx context.Context, in *Message, opts ...grpc.CallO
 	return out, nil
 }
 
+func (c *chatClient) CreateDialog(ctx context.Context, in *Dialog, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := c.cc.Invoke(ctx, "/chat.Chat/CreateDialog", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatClient) Clear(ctx context.Context, in *DialogIdentifier, opts ...grpc.CallOption) (*Nothing, error) {
 	out := new(Nothing)
 	err := c.cc.Invoke(ctx, "/chat.Chat/Clear", in, out, opts...)
@@ -74,6 +84,7 @@ func (c *chatClient) GetDialogs(ctx context.Context, in *UserIdentifier, opts ..
 type ChatServer interface {
 	GetHistory(context.Context, *GetHistoryArg) (*Messages, error)
 	Create(context.Context, *Message) (*Nothing, error)
+	CreateDialog(context.Context, *Dialog) (*Nothing, error)
 	Clear(context.Context, *DialogIdentifier) (*Nothing, error)
 	GetDialogs(context.Context, *UserIdentifier) (*Dialogs, error)
 }
@@ -87,6 +98,9 @@ func (UnimplementedChatServer) GetHistory(context.Context, *GetHistoryArg) (*Mes
 }
 func (UnimplementedChatServer) Create(context.Context, *Message) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
+func (UnimplementedChatServer) CreateDialog(context.Context, *Dialog) (*Nothing, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDialog not implemented")
 }
 func (UnimplementedChatServer) Clear(context.Context, *DialogIdentifier) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Clear not implemented")
@@ -142,6 +156,24 @@ func _Chat_Create_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Chat_CreateDialog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Dialog)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServer).CreateDialog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/chat.Chat/CreateDialog",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServer).CreateDialog(ctx, req.(*Dialog))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Chat_Clear_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DialogIdentifier)
 	if err := dec(in); err != nil {
@@ -192,6 +224,10 @@ var Chat_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Create",
 			Handler:    _Chat_Create_Handler,
+		},
+		{
+			MethodName: "CreateDialog",
+			Handler:    _Chat_CreateDialog_Handler,
 		},
 		{
 			MethodName: "Clear",
