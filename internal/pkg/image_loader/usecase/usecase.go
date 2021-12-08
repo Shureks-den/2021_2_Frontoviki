@@ -57,6 +57,9 @@ func (ilu *ImageLoaderUsecase) UploadAvatar(headerFile *multipart.FileHeader) (s
 }
 
 func (ilu *ImageLoaderUsecase) RemoveAvatar(filePath string) error {
+	if filePath == imageloader.DefaultAvatar {
+		return nil
+	}
 	return ilu.imageLoaderRepo.Delete(filePath)
 }
 

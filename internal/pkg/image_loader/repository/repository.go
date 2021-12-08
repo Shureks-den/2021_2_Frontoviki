@@ -39,7 +39,7 @@ func (ilr *ImageLoaderRepository) Insert(fileHeader *multipart.FileHeader, dir s
 }
 
 func (ilr *ImageLoaderRepository) Delete(filePath string) error {
-	if filePath == "" || filePath == imageloader.DefaultAvatar {
+	if filePath == "" {
 		return nil
 	}
 

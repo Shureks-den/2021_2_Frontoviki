@@ -4,9 +4,9 @@ import "mime/multipart"
 
 const (
 	AvatarsDirectory     string = "static/avatars"
-	DefaultAvatar        string = AvatarsDirectory + "/default_avatar.webp"
+	DefaultAvatar        string = AvatarsDirectory + "/default_avatar"
 	AdvertImageDirectory string = "static/advertimages"
-	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image.webp"
+	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image"
 	CompressedFormat     string = "webp"
 )
 
