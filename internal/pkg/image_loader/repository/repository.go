@@ -39,14 +39,17 @@ func (ilr *ImageLoaderRepository) Insert(fileHeader *multipart.FileHeader, dir s
 }
 
 func (ilr *ImageLoaderRepository) Delete(filePath string) error {
-	if filePath == "" {
+	if filePath == "" || filePath == imageloader.DefaultAvatar {
 		return nil
 	}
 
 	err := os.Remove(fmt.Sprintf("%s.%s", filePath, imageloader.CompressedFormat))
 	if err != nil {
-		extension := strings.Split(filePath, "__")[1]
-		err = os.Remove(fmt.Sprintf("%s.%s", filePath, extension))
+		parts := strings.Split(filePath, "__")
+		if len(parts) != 2 {
+			return internalError.UnableToRemove
+		}
+		err = os.Remove(fmt.Sprintf("%s.%s", filePath, parts[1]))
 		if err != nil {
 			return internalError.UnableToRemove
 		}
