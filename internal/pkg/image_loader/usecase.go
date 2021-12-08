@@ -7,6 +7,7 @@ const (
 	DefaultAvatar        string = AvatarsDirectory + "/default_avatar.webp"
 	AdvertImageDirectory string = "static/advertimages"
 	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image.webp"
+	CompressedFormat     string = "webp"
 )
 
 //go:generate mockery -name=ImageLoaderUsecase
