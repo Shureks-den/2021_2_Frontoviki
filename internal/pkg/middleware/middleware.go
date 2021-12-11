@@ -143,8 +143,14 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 		case strings.Contains(relativePath, "/connect"):
 			break
 
-		case relativePath == "/notice":
+		case relativePath == "/promotion":
 			log.Println("notice!!!")
+			if !strings.Contains(contentType, "application/x-www-form-urlencoded") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/x-www-form-urlencoded required", nil))
+				return
+			}
 
 		default:
 			if contentType != "application/json" {
