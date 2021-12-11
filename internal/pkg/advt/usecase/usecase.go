@@ -65,6 +65,16 @@ func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) er
 	newAdvert.DateClose = oldAdvert.DateClose
 	newAdvert.IsActive = oldAdvert.IsActive
 
+	if newAdvert.Price != oldAdvert.Price {
+		if err = au.advtRepository.UpdatePrice(&models.AdvertPrice{
+			AdvertId:   newAdvert.Id,
+			Price:      int64(newAdvert.Price),
+			ChangeTime: time.Now(),
+		}); err != nil {
+			return err
+		}
+	}
+
 	err = au.advtRepository.Update(newAdvert)
 	if err != nil {
 		return err
@@ -220,6 +230,10 @@ func (au *AdvtUsecase) UpdateAdvertPrice(userId int64, adPrice *models.AdvertPri
 
 	if advert.PublisherId != userId || adPrice.Price < 0 {
 		return internalError.Conflict
+	}
+
+	if advert.Price != int(adPrice.Price) {
+		return internalError.AlreadyExist
 	}
 
 	advert.Price = int(adPrice.Price)
