@@ -27,4 +27,6 @@ type AdvtRepository interface {
 
 	SelectPriceHistory(advertId int64) ([]*models.AdvertPrice, error)
 	UpdatePrice(advertPrice *models.AdvertPrice) error
+
+	UpdatePromo(promo *models.Promotion) error
 }

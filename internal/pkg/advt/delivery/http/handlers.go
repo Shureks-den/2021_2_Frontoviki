@@ -60,6 +60,8 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 
 	s.Handle("/price_history", sm.CheckAuthorized(http.HandlerFunc(ah.UpdatePriceHistory))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/price_history/{id:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.GetPriceHistory)))).Methods(http.MethodGet, http.MethodOptions)
+
+	s.Handle("/promotion", sm.CheckAuthorized(http.HandlerFunc(ah.UpdatePromotion))).Methods(http.MethodPost, http.MethodOptions)
 }
 
 // AdvertListHandler godoc
@@ -888,4 +890,43 @@ func (ah *AdvertHandler) GetPriceHistory(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyPriceHistory{History: priceHistory}
 	w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+}
+
+func (ah *AdvertHandler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	defer r.Body.Close()
+	promo := &models.Promotion{}
+	err := json.NewDecoder(r.Body).Decode(&promo)
+	if err != nil {
+		logger.Warnf("can not decode price: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(promo)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		return
+	}
+
+	err = ah.advtUsecase.UpdatePromotion(userId, promo)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(models.ToBytes(http.StatusOK, "promotion updated successfully", nil))
 }

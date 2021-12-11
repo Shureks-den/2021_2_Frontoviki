@@ -23,6 +23,7 @@ type Advert struct {
 	Views       int64     `json:"views" valid:"-" swaggerignore:"true"`
 	Amount      int64     `json:"amount" valid:"int,optional" swaggerignore:"true"`
 	IsNew       bool      `json:"is_new" valid:"optional"`
+	PromoLevel  int64     `json:"promo_level" valid:"optional,numeric"`
 }
 
 type AdvertShort struct {
@@ -84,4 +85,10 @@ type AdvertPrice struct {
 	AdvertId   int64     `json:"advert_id" valid:"-"`
 	Price      int64     `json:"price" valid:"numeric"`
 	ChangeTime time.Time `json:"change_time" valid:"-"`
+}
+
+type Promotion struct {
+	AdvertId   int64     `json:"advert_id" valid:"-"`
+	PromoLevel int64     `json:"promo_level" valid:"numeric"`
+	UpdateTime time.Time `json:"promo_updated" valid:"-"`
 }

@@ -250,3 +250,22 @@ func (au *AdvtUsecase) GetPriceHistory(advertId int64) ([]*models.AdvertPrice, e
 	priceHistory, err := au.advtRepository.SelectPriceHistory(advertId)
 	return priceHistory, err
 }
+
+func (au *AdvtUsecase) UpdatePromotion(userId int64, promo *models.Promotion) error {
+	advert, err := au.advtRepository.SelectById(promo.AdvertId)
+	if err != nil {
+		return err
+	}
+
+	if userId != advert.PublisherId {
+		return internalError.Conflict
+	}
+
+	if promo.PromoLevel < advt.MinPromo || promo.PromoLevel >= advt.MaxPromo {
+		return internalError.BadRequest
+	}
+
+	promo.UpdateTime = time.Now()
+	err = au.advtRepository.UpdatePromo(promo)
+	return err
+}

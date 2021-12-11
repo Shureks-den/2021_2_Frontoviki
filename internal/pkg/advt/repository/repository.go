@@ -25,12 +25,15 @@ func NewAdvtRepository(DB *sql.DB) advt.AdvtRepository {
 
 func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.Advert, error) {
 	queryStr := `SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				 a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+				 	a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), 
+					a.amount, a.is_new, p.promo_level 
+				 FROM advert a
 				 JOIN category c ON a.category_id = c.Id
+				 JOIN promotion as p ON a.id = p.advert_id
 				 LEFT JOIN advert_image ai ON a.id = ai.advert_id
 				 WHERE a.is_active 
 				 GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				 a.date_close, a.is_active, a.views, a.publisher_id, c.name %s LIMIT $1 OFFSET $2;`
+				 a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level %s LIMIT $1 OFFSET $2;`
 	if isSortedByPublichedDate {
 		queryStr = fmt.Sprintf(queryStr, " ORDER BY a.published_at DESC")
 	} else {
@@ -50,7 +53,7 @@ func (ar *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from, cou
 
 		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
 		}
@@ -113,6 +116,17 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 		return internalError.GenInternalError(err)
 	}
 
+	// вставляем уровень продвижения в таблицу продвижения
+	queryStr = "INSERT INTO promotion (advert_id) VALUES ($1);"
+	_, err = ar.DB.Exec(queryStr, advert.Id)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return internalError.NotCommited
@@ -124,11 +138,14 @@ func (ar *AdvtRepository) Insert(advert *models.Advert) error {
 func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 	queryStr := `
 				SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+					a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, 
+					a.is_new, p.promo_level 
+				FROM advert a
 				JOIN category c ON a.category_id = c.Id
+				JOIN promotion as p ON a.id = p.advert_id
 				LEFT JOIN advert_image ai ON a.id = ai.advert_id 
 				GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				a.date_close, a.is_active, a.views, a.publisher_id, c.name
+				a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level 
 				HAVING a.id = $1;`
 	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId)
 
@@ -137,7 +154,7 @@ func (ar *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 
 	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 
 	if err != nil {
 		return nil, internalError.EmptyQuery
@@ -276,11 +293,14 @@ func (ar *AdvtRepository) InsertImages(advertId int64, newImages []string) error
 const (
 	defaultAdvertsQueryByPublisherId string = `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path),
+			a.amount, a.is_new, p.promo_level
+		FROM advert a
 		JOIN category c ON a.category_id = c.Id 
+		JOIN promotion as p ON a.id = p.advert_id
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new, p.promo_level 
 		HAVING a.publisher_id = $1 %s %s 
 		LIMIT $2 OFFSET $3;
 	`
@@ -311,7 +331,7 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 
 		err := rows.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
@@ -336,14 +356,16 @@ func (ar *AdvtRepository) SelectAdvertsByPublisherId(publisherId int64, is_activ
 func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, count int64) ([]*models.Advert, error) {
 	queryStr := `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new 
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), 
+			a.amount, a.is_new, p.promo_level  
 		FROM (
 			SELECT * FROM advert WHERE category_id = (SELECT id FROM category WHERE lower(name) = lower($1))
 		) as a 
 		JOIN category c ON a.category_id = c.Id
+		JOIN promotion as p ON a.id = p.advert_id
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-				a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new 
+				a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new, p.promo_level 
 		HAVING a.is_active = true
 		ORDER BY a.published_at DESC
 		LIMIT $2 OFFSET $3;
@@ -362,7 +384,7 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 
 		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
@@ -386,13 +408,16 @@ func (ar *AdvtRepository) SelectAdvertsByCategory(categoryName string, from, cou
 func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64) ([]*models.Advert, error) {
 	queryStr := `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), 
+			a.amount, a.is_new, p.promo_level 
+		FROM advert a
 		JOIN favorite f ON a.id = f.advert_id
 		JOIN category c ON a.category_id = c.Id 
+		JOIN promotion as p ON a.id = p.advert_id
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id
 		WHERE f.user_id = $1
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, a.amount, a.is_new, p.promo_level
 		LIMIT $2 OFFSET $3;
 	`
 	query, err := ar.DB.QueryContext(context.Background(), queryStr, userId, count, from*count)
@@ -408,7 +433,7 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 
 		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 
 		if err != nil {
 			return nil, internalError.GenInternalError(err)
@@ -432,12 +457,15 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert, error) {
 	queryStr := `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), a.amount, a.is_new FROM advert a
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, array_agg(ai.img_path), 
+			a.amount, a.is_new, p.promo_level 
+		FROM advert a
 		JOIN category c ON a.category_id = c.Id
+		JOIN promotion as p ON a.id = p.advert_id
 		LEFT JOIN advert_image ai ON a.id = ai.advert_id 
 		JOIN favorite f ON a.id = f.advert_id AND f.user_id = $2
 		GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
-			a.date_close, a.is_active, a.views, a.publisher_id, c.name
+			a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
 		HAVING a.id = $1;
 	`
 	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId, userId)
@@ -447,7 +475,7 @@ func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert
 
 	err := queryRow.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
 		&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
-		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew)
+		&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
 
 	if err != nil {
 		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
@@ -603,4 +631,30 @@ func (ar *AdvtRepository) SelectPriceHistory(advertId int64) ([]*models.AdvertPr
 		history = append(history, &price)
 	}
 	return history, nil
+}
+
+func (ar *AdvtRepository) UpdatePromo(promo *models.Promotion) error {
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	_, err = tx.ExecContext(context.Background(),
+		"UPDATE promotion SET promo_level = $2, promo_start = $3 WHERE advert_id = $1;",
+		promo.AdvertId, promo.PromoLevel, promo.UpdateTime,
+	)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
 }

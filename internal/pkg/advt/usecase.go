@@ -5,6 +5,11 @@ import (
 	"yula/internal/models"
 )
 
+const (
+	MinPromo int64 = 0
+	MaxPromo int64 = 3
+)
+
 //go:generate mockery -name=AdvtUsecase
 
 type AdvtUsecase interface {
@@ -31,4 +36,6 @@ type AdvtUsecase interface {
 
 	GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error)
 	UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error
+
+	UpdatePromotion(userId int64, promo *models.Promotion) error
 }
