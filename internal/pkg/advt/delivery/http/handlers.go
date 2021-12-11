@@ -1,8 +1,11 @@
 package delivery
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -62,6 +65,26 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/price_history/{id:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.GetPriceHistory)))).Methods(http.MethodGet, http.MethodOptions)
 
 	s.Handle("/promotion", sm.CheckAuthorized(http.HandlerFunc(ah.UpdatePromotion))).Methods(http.MethodPost, http.MethodOptions)
+
+	r.HandleFunc("/notice", ah.HandleNotification).Methods(http.MethodPost, http.MethodOptions)
+}
+
+func (ah *AdvertHandler) HandleNotification(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+
+	defer r.Body.Close()
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Warnf("invalid body: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
+	log.Printf("\n\nBODY: %q\n\n", rdr1)
 }
 
 // AdvertListHandler godoc
