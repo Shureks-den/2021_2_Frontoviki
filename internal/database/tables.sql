@@ -1,3 +1,4 @@
+-- DROP TABLE promotion;
 -- DROP TABLE views_;
 -- DROP TABLE rating_statistics;
 -- DROP TABLE rating;
@@ -149,6 +150,14 @@ CREATE TABLE IF NOT EXISTS dialogs (
 	FOREIGN KEY (user1) REFERENCES users (id) ON DELETE SET NULL,
 	FOREIGN KEY (user2) REFERENCES users (id) ON DELETE SET NULL,
 	FOREIGN KEY (adv_id) REFERENCES advert (id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS promotion (
+	advert_id int NOT NULL,
+	promo_level int NOT NULL DEFAULT 0,
+	promo_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
 
