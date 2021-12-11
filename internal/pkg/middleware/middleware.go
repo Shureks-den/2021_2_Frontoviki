@@ -143,6 +143,9 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 		case strings.Contains(relativePath, "/connect"):
 			break
 
+		case relativePath == "/notice":
+			log.Println("notice!!!")
+
 		default:
 			if contentType != "application/json" {
 				w.Header().Set("Content-Type", "application/json")
