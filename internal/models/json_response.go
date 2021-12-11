@@ -60,9 +60,10 @@ type HttpBodyAdvert struct {
 }
 
 type HttpBodyAdvertDetail struct {
-	Advert   Advert     `json:"advert"`
-	Salesman Profile    `json:"salesman"`
-	Rating   RatingStat `json:"rating"`
+	Advert       Advert         `json:"advert"`
+	Salesman     Profile        `json:"salesman"`
+	Rating       RatingStat     `json:"rating"`
+	PriceHistory []*AdvertPrice `json:"price_history"`
 }
 
 type HttpBodySalesmanPage struct {

@@ -235,8 +235,17 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	history, err := ah.advtUsecase.GetPriceHistory(advertId)
+	if err != nil {
+		logger.Debugf("can not get price history: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat}
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat, PriceHistory: history}
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 	logger.Debug("advert found successfully")
 }
