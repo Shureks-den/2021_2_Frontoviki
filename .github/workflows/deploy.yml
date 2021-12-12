@@ -87,12 +87,12 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /home/zennoma/deploy_backend
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_main:latest < ${{ secrets.PASSWORD }}
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_chat:latest < ${{ secrets.PASSWORD }}
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_category:latest < ${{ secrets.PASSWORD }}
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_auth:latest < ${{ secrets.PASSWORD }}
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest < ${{ secrets.PASSWORD }}
-            sudo -S docker pull decadanceeeee/2021_2_frontoviki_db:latest < ${{ secrets.PASSWORD }}
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_main:latest
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_chat:latest
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_category:latest
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_auth:latest
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest
+            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_db:latest
       - name: deploy docker image
         uses: appleboy/ssh-action@master
         with:
@@ -101,5 +101,6 @@ jobs:
           port: ${{ secrets.PORT }}
           password: ${{ secrets.PASSWORD }}
           script: |
-            sudo -S docker rm -f $(sudo docker ps -aq) < ${{ secrets.PASSWORD }}
-            sudo -S docker-compose up < ${{ secrets.PASSWORD }}
+            cd /home/zennoma/deploy_backend
+            cat password.txt | sudo -S docker rm -f $(sudo docker ps -aq)
+            cat password.txt | sudo -S docker-compose up
