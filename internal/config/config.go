@@ -12,9 +12,8 @@ import (
 type config struct {
 	Server struct {
 		Main struct {
-			Host   string
-			Port   string
-			Secure bool
+			Host string
+			Port string
 		}
 	}
 
@@ -49,28 +48,6 @@ type config struct {
 		Category struct {
 			Host string
 			Port string
-		}
-	}
-
-	Certificates struct {
-		Selfsigned struct {
-			Crt struct {
-				Path string
-			}
-
-			Key struct {
-				Path string
-			}
-		}
-
-		Https struct {
-			Crt struct {
-				Path string
-			}
-
-			Key struct {
-				Path string
-			}
 		}
 	}
 
@@ -128,14 +105,7 @@ func (c *config) GetMainPort() string {
 }
 
 func (c *config) GetMainSchema() string {
-	if c.Server.Main.Secure {
-		return "https"
-	}
 	return "http"
-}
-
-func (c *config) IsSecure() bool {
-	return Cfg.Server.Main.Secure
 }
 
 func (c *config) GetPostgresUrl() string {
@@ -190,22 +160,6 @@ func (c *config) GetAuthEndPoint() string {
 
 func (c *config) GetCategoryEndPoint() string {
 	return fmt.Sprintf("%s:%s", c.Microservices.Category.Host, c.Microservices.Category.Port)
-}
-
-func (c *config) GetSelfSignedCrt() string {
-	return c.Certificates.Selfsigned.Crt.Path
-}
-
-func (c *config) GetSelfSignedKey() string {
-	return c.Certificates.Selfsigned.Key.Path
-}
-
-func (c *config) GetHTTPSCrt() string {
-	return c.Certificates.Https.Crt.Path
-}
-
-func (c *config) GetHTTPSKey() string {
-	return c.Certificates.Https.Key.Path
 }
 
 func (c *config) GetStaticDirs() []string {
