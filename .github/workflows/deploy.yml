@@ -25,54 +25,54 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      # - name: Build and push db
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/db/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_db:latest
-      # - name: Build and push tarantool
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/tarantool/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_tarantool:latest
-      # - name: Build and push auth
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/auth/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_auth:latest
-      # - name: Build and push chat
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/chat/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_chat:latest
-      # - name: Build and push category
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/category/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_category:latest
-      # - name: Build and push main
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: .
-      #     file: ./build/main/Dockerfile
-      #     platforms: linux/arm64
-      #     push: true
-      #     tags: decadanceeeee/2021_2_frontoviki_main:latest
+      - name: Build and push db
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/db/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_db:latest
+      - name: Build and push tarantool
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/tarantool/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_tarantool:latest
+      - name: Build and push auth
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/auth/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_auth:latest
+      - name: Build and push chat
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/chat/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_chat:latest
+      - name: Build and push category
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/category/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_category:latest
+      - name: Build and push main
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/main/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_main:latest
 
   deploy:
     runs-on: ubuntu-latest
