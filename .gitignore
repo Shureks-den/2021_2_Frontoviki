@@ -49,9 +49,6 @@ docs
 # ignore logs
 logs
 
-#ignore db files
-*database.sql
-
 # config files
 config*.yml
 
