@@ -9,6 +9,7 @@ on:
       - dev
 
 jobs:
+
   build:
     name: Build Docker
     runs-on: ubuntu-latest
