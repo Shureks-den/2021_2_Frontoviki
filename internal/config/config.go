@@ -63,7 +63,7 @@ var (
 
 func argparse() (string, string, string) {
 	mode := flag.String("mode", "dev", "config mode")
-	filePath := flag.String("path", ".", "path to config file")
+	filePath := flag.String("path", "./configs", "path to config file")
 
 	flag.Parse()
 

@@ -5,12 +5,16 @@ services:
     build:
       context: .
       dockerfile: build/db/Dockerfile
+    volumes:
+      - ./configs:/app/configs
     container_name: db
 
   tarantool:
     build:
       context: .
       dockerfile: build/tarantool/Dockerfile
+    volumes:
+      - ./configs:/app/configs
     container_name: tarantool
 
   auth:
@@ -20,6 +24,8 @@ services:
       context: .
       dockerfile: build/auth/Dockerfile
       target: run_step
+    volumes:
+      - ./configs:/app/configs
     container_name: auth
 
   chat:
@@ -29,6 +35,8 @@ services:
       context: .
       dockerfile: build/chat/Dockerfile
       target: run_step
+    volumes:
+      - ./configs:/app/configs
     container_name: chat
 
   category:
@@ -38,6 +46,8 @@ services:
       context: .
       dockerfile: build/category/Dockerfile
       target: run_step
+    volumes:
+      - ./configs:/app/configs
     container_name: category
 
   main:
@@ -50,6 +60,9 @@ services:
       context: .
       dockerfile: build/main/Dockerfile
       target: run_step
+    volumes:
+      - ./static:/app/static
+      - ./configs:/app/configs
     ports:
       - "8080:8080"
     container_name: main

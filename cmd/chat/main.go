@@ -13,20 +13,9 @@ import (
 	chatRep "yula/internal/services/chat/repository"
 	chatUse "yula/internal/services/chat/usecase"
 
-	"github.com/asaskevich/govalidator"
-	"github.com/joho/godotenv"
-
 	chatServer "yula/internal/services/chat/server"
 	// _ "yula/docs"
 )
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("No .env file found")
-	}
-
-	govalidator.SetFieldsRequiredByDefault(true)
-}
 
 func getPostgres(dsn string) *sql.DB {
 	db, err := sql.Open("pgx", dsn)

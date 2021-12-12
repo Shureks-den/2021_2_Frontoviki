@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"yula/internal/config"
 
 	_ "github.com/jackc/pgx/stdlib"
@@ -12,20 +11,9 @@ import (
 	sessRep "yula/internal/services/auth/repository"
 	sessUse "yula/internal/services/auth/usecase"
 
-	"github.com/asaskevich/govalidator"
-	"github.com/joho/godotenv"
-
 	authServer "yula/internal/services/auth/server"
 	// _ "yula/docs"
 )
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("No .env file found")
-	}
-
-	govalidator.SetFieldsRequiredByDefault(true)
-}
 
 // @title Volchock's API
 // @version 1.0

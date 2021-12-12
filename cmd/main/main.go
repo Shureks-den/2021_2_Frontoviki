@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"fmt"
 
@@ -42,29 +40,18 @@ import (
 	metrics "yula/internal/pkg/metrics"
 	metricsHttp "yula/internal/pkg/metrics/delivery"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 
 	authProto "yula/proto/generated/auth"
 	categoryProto "yula/proto/generated/category"
 	chatProto "yula/proto/generated/chat"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	// _ "yula/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("No .env file found")
-	}
-
-	govalidator.SetFieldsRequiredByDefault(true)
-}
 
 func getPostgres(dsn string) *sql.DB {
 	db, err := sql.Open("pgx", dsn)
@@ -86,20 +73,6 @@ func CreateGRPCClient(endPoint string, opt grpc.DialOption) *grpc.ClientConn {
 	}
 
 	return grpcAuthClient
-}
-
-func CreateSecureGRPCClient(endPoint string, pemServerCA []byte) *grpc.ClientConn {
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemServerCA) {
-		log.Fatal("can not append certs from pem")
-	}
-
-	// Create the credentials and return it
-	configG := &tls.Config{
-		RootCAs: certPool,
-	}
-
-	return CreateGRPCClient(endPoint, grpc.WithTransportCredentials(credentials.NewTLS(configG)))
 }
 
 // @title Volchock's API

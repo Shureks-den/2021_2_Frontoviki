@@ -13,20 +13,9 @@ import (
 	categoryRep "yula/internal/services/category/repository"
 	categoryUse "yula/internal/services/category/usecase"
 
-	"github.com/asaskevich/govalidator"
-	"github.com/joho/godotenv"
-
 	categoryServer "yula/internal/services/category/server"
 	// _ "yula/docs"
 )
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("No .env file found")
-	}
-
-	govalidator.SetFieldsRequiredByDefault(true)
-}
 
 func getPostgres(dsn string) *sql.DB {
 	db, err := sql.Open("pgx", dsn)
