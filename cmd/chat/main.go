@@ -71,5 +71,5 @@ func main() {
 	chu := chatUse.NewChatUsecase(chr)
 
 	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
-	grpcChat.NewGRPCServer(config.Cfg.GetChatEndPoint(), config.Cfg.GetSelfSignedCrt(), config.Cfg.GetSelfSignedKey())
+	grpcChat.NewGRPCServer(config.Cfg.GetChatEndPoint())
 }

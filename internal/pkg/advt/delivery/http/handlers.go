@@ -69,6 +69,14 @@ func (ah *AdvertHandler) HandlePromotion(w http.ResponseWriter, r *http.Request)
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 
 	err := r.ParseForm()
+	fmt.Println("request.Form::")
+	for key, value := range r.Form {
+		fmt.Printf("Key:%s, Value:%s\n", key, value)
+	}
+	fmt.Println("\nrequest.PostForm::")
+	for key, value := range r.PostForm {
+		fmt.Printf("Key:%s, Value:%s\n", key, value)
+	}
 	if err != nil {
 		logger.Warnf("invalid form: %s", err.Error())
 		w.WriteHeader(http.StatusOK)

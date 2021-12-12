@@ -5,7 +5,8 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
+
+	// "io/ioutil"
 	"log"
 	"net/http"
 	"yula/internal/config"
@@ -157,12 +158,12 @@ func main() {
 	ch := cartHttp.NewCartHandler(cu, uu, au)
 	serh := srchHttp.NewSearchHandler(seru)
 
-	pemServerCA, err := ioutil.ReadFile(config.Cfg.GetSelfSignedCrt())
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	// pemServerCA, err := ioutil.ReadFile(config.Cfg.GetSelfSignedCrt())
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
 
-	grpcChatClient := CreateSecureGRPCClient(config.Cfg.GetChatEndPoint(), pemServerCA)
+	grpcChatClient := CreateGRPCClient(config.Cfg.GetChatEndPoint(), grpc.WithInsecure())
 	defer grpcChatClient.Close()
 
 	grpcAuthClient := CreateGRPCClient(config.Cfg.GetAuthEndPoint(), grpc.WithInsecure())
@@ -191,11 +192,6 @@ func main() {
 	fmt.Printf("start serving ::%s\n", port)
 
 	var error error
-	secure := config.Cfg.IsSecure()
-	if secure {
-		error = http.ListenAndServeTLS(fmt.Sprintf(":%s", port), config.Cfg.GetHTTPSCrt(), config.Cfg.GetHTTPSKey(), r)
-	} else {
-		error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
-	}
+	error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
 	logger.Errorf("http serve error %v", error)
 }

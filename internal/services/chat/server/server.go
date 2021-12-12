@@ -2,13 +2,11 @@ package delivery
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"yula/internal/models"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	chat "yula/internal/services/chat"
@@ -28,7 +26,7 @@ func NewChatGRPCServer(logger *logrus.Logger, cu chat.ChatUsecase) *ChatServer {
 	return server
 }
 
-func (server *ChatServer) NewGRPCServer(listenUrl string, certFile string, keyFile string) error {
+func (server *ChatServer) NewGRPCServer(listenUrl string) error {
 	lis, err := net.Listen("tcp", listenUrl)
 	server.logger.Infof("CHAT: my listen url %s \n", listenUrl)
 
@@ -37,18 +35,18 @@ func (server *ChatServer) NewGRPCServer(listenUrl string, certFile string, keyFi
 		return err
 	}
 
-	serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		server.logger.Error(err.Error())
-	}
+	// serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	// if err != nil {
+	// 	server.logger.Error(err.Error())
+	// }
 
 	// Create the credentials and return it
-	config := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.NoClientCert,
-	}
+	// config := &tls.Config{
+	// 	Certificates: []tls.Certificate{serverCert},
+	// 	ClientAuth:   tls.NoClientCert,
+	// }
 
-	serv := grpc.NewServer(grpc.Creds(credentials.NewTLS(config)))
+	serv := grpc.NewServer()
 	proto.RegisterChatServer(serv, server)
 
 	server.logger.Info("Start chat service\n")
