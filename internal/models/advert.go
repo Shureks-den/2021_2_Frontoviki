@@ -27,11 +27,12 @@ type Advert struct {
 }
 
 type AdvertShort struct {
-	Id       int64  `json:"id" example:"1"`
-	Name     string `json:"name" example:"anime's t-shirt"`
-	Price    int    `json:"price" example:"100"`
-	Location string `json:"location" example:"Moscow"`
-	Image    string `json:"image" example:"/static/advert_images/default_image.png"`
+	Id         int64  `json:"id" example:"1"`
+	Name       string `json:"name" example:"anime's t-shirt"`
+	Price      int    `json:"price" example:"100"`
+	Location   string `json:"location" example:"Moscow"`
+	Image      string `json:"image" example:"/static/advert_images/default_image.png"`
+	PromoLevel int64  `json:"promo_level" valid:"optional,numeric"`
 }
 
 func (a *Advert) ToShort() *AdvertShort {
@@ -42,7 +43,7 @@ func (a *Advert) ToShort() *AdvertShort {
 		imageStr = a.Images[0]
 	}
 	return &AdvertShort{
-		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr,
+		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr, PromoLevel: a.PromoLevel
 	}
 }
 
