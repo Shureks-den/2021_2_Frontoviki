@@ -65,14 +65,14 @@ jobs:
       #     platforms: linux/arm64
       #     push: true
       #     tags: decadanceeeee/2021_2_frontoviki_category:latest
-      - name: Build and push main
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./build/main/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: decadanceeeee/2021_2_frontoviki_main:latest
+      # - name: Build and push main
+      #   uses: docker/build-push-action@v2
+      #   with:
+      #     context: .
+      #     file: ./build/main/Dockerfile
+      #     platforms: linux/arm64
+      #     push: true
+      #     tags: decadanceeeee/2021_2_frontoviki_main:latest
 
   deploy:
     runs-on: ubuntu-latest
@@ -87,12 +87,12 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /home/zennoma/deploy_backend
-            sudo docker pull decadanceeeee/2021_2_frontoviki_main:latest
-            sudo docker pull decadanceeeee/2021_2_frontoviki_chat:latest
-            sudo docker pull decadanceeeee/2021_2_frontoviki_category:latest
-            sudo docker pull decadanceeeee/2021_2_frontoviki_auth:latest
-            sudo docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest
-            sudo docker pull decadanceeeee/2021_2_frontoviki_db:latest
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_main:latest < ${{ secrets.PASSWORD }}
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_chat:latest < ${{ secrets.PASSWORD }}
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_category:latest < ${{ secrets.PASSWORD }}
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_auth:latest < ${{ secrets.PASSWORD }}
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest < ${{ secrets.PASSWORD }}
+            sudo -S docker pull decadanceeeee/2021_2_frontoviki_db:latest < ${{ secrets.PASSWORD }}
       - name: deploy docker image
         uses: appleboy/ssh-action@master
         with:
@@ -101,5 +101,5 @@ jobs:
           port: ${{ secrets.PORT }}
           password: ${{ secrets.PASSWORD }}
           script: |
-            sudo docker rm -f $(sudo docker ps -aq)
-            sudo docker-compose up
+            sudo -S docker rm -f $(sudo docker ps -aq) < ${{ secrets.PASSWORD }}
+            sudo -S docker-compose up < ${{ secrets.PASSWORD }}
