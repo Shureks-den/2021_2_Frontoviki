@@ -49,9 +49,7 @@ docs
 # ignore logs
 logs
 
-#ignore docker files
-*docker*
-build
+#ignore db files
 *database.sql
 
 # config files

@@ -1,0 +1,55 @@
+version: "3.4"
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: build/db/Dockerfile
+    container_name: db
+
+  tarantool:
+    build:
+      context: .
+      dockerfile: build/tarantool/Dockerfile
+    container_name: tarantool
+
+  auth:
+    depends_on:
+      - tarantool
+    build:
+      context: .
+      dockerfile: build/auth/Dockerfile
+      target: run_step
+    container_name: auth
+
+  chat:
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: build/chat/Dockerfile
+      target: run_step
+    container_name: chat
+
+  category:
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: build/category/Dockerfile
+      target: run_step
+    container_name: category
+
+  main:
+    depends_on:
+      - db
+      - auth
+      - chat
+      - category
+    build:
+      context: .
+      dockerfile: build/main/Dockerfile
+      target: run_step
+    ports:
+      - "8080:8080"
+    container_name: main
