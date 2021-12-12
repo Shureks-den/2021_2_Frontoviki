@@ -1,0 +1,105 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+
+  build:
+    name: Build Docker
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: dev
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to Docker
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build and push db
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/db/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_db:latest
+      - name: Build and push tarantool
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/tarantool/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_tarantool:latest
+      - name: Build and push auth
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/auth/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_auth:latest
+      - name: Build and push chat
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/chat/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_chat:latest
+      - name: Build and push category
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./cmd/category/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_category:latest
+      - name: Build and push main
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/main/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_main:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: pull docker image
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd /home/zennoma/deploy_backend
+            sudo docker pull decadanceeeee/2021_2_frontoviki_main:latest
+            sudo docker pull decadanceeeee/2021_2_frontoviki_chat:latest
+            sudo docker pull decadanceeeee/2021_2_frontoviki_category:latest
+            sudo docker pull decadanceeeee/2021_2_frontoviki_auth:latest
+            sudo docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest
+            sudo docker pull decadanceeeee/2021_2_frontoviki_db:latest
+      - name: deploy docker image
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            sudo docker rm -f $(sudo docker ps -aq)
+            sudo docker-compose up
