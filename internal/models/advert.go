@@ -43,7 +43,7 @@ func (a *Advert) ToShort() *AdvertShort {
 		imageStr = a.Images[0]
 	}
 	return &AdvertShort{
-		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr, PromoLevel: a.PromoLevel
+		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr, PromoLevel: a.PromoLevel,
 	}
 }
 
