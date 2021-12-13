@@ -7,5 +7,5 @@ RUN apk add build-base
 RUN go mod tidy
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o compressor cmd/compressor/main.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main cmd/main/main.go
-RUN cp ./configs/start.sh ./start.sh
+RUN cp /app/configs/start.sh /app/start.sh
 ENTRYPOINT [ "./start.sh" ]
