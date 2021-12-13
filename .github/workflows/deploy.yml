@@ -93,10 +93,10 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /home/zennoma/deploy_backend
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_main:latest
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_chat:latest
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_category:latest
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_auth:latest
+            docker pull decadanceeeee/2021_2_frontoviki_main:latest
+            docker pull decadanceeeee/2021_2_frontoviki_chat:latest
+            docker pull decadanceeeee/2021_2_frontoviki_category:latest
+            docker pull decadanceeeee/2021_2_frontoviki_auth:latest
       - name: deploy docker image
         uses: appleboy/ssh-action@master
         with:
@@ -106,4 +106,4 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /home/zennoma/deploy_backend
-            cat password.txt | sudo -S docker-compose up -d
+            docker-compose up -d
