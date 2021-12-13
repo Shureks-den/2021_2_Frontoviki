@@ -41,8 +41,8 @@ jobs:
         run: |
           cd internal/ 
           go test -coverprofile cover ./... -coverpkg ./...
-	        go tool cover -func cover
-	        rm -rf cover
+          go tool cover -func cover
+          rm -rf cover
 
   build:
     name: Build Docker
