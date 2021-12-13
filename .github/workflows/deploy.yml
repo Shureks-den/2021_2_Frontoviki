@@ -17,16 +17,7 @@ jobs:
     steps:
       # установка либы для работы с картинками
       - run: |
-          sudo apt-get install libjpeg-dev
-          sudo apt-get install libpng-dev
-          sudo apt-get install libwebp-dev
-          wget "https://github.com/libvips/libvips/releases/download/v8.12.1/vips-8.12.1.tar.gz"
-          tar xf vips-8.12.1.tar.gz
-          cd vips-8.12.1/
-          ./configure --with-png-includes --with-png-libraries --with-jpeg-includes --with-jpeg-libraries
-          make
-          sudo make install
-          sudo ldconfig
+          sudo apt-get install libvips
 
       - uses: actions/checkout@v2
       - name: golangci-lint
@@ -56,22 +47,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Build and push db
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./build/db/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: decadanceeeee/2021_2_frontoviki_db:latest
-      - name: Build and push tarantool
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./build/tarantool/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: decadanceeeee/2021_2_frontoviki_tarantool:latest
       - name: Build and push auth
         uses: docker/build-push-action@v2
         with:
@@ -122,8 +97,6 @@ jobs:
             cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_chat:latest
             cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_category:latest
             cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_auth:latest
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_tarantool:latest
-            cat password.txt | sudo -S docker pull decadanceeeee/2021_2_frontoviki_db:latest
       - name: deploy docker image
         uses: appleboy/ssh-action@master
         with:
