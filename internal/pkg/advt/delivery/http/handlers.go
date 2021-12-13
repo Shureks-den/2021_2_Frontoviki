@@ -1,8 +1,8 @@
 package delivery
 
 import (
-	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
@@ -174,12 +175,21 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	var advert models.Advert
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&advert)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &advert)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -336,12 +346,21 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 
 	var newAdvert models.Advert
 	defer r.Body.Close()
-	err = json.NewDecoder(r.Body).Decode(&newAdvert)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("can not decode adv: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &newAdvert)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -574,11 +593,21 @@ func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Reque
 
 	defer r.Body.Close()
 	images := &models.AdvertImages{}
-	err = json.NewDecoder(r.Body).Decode(&images)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("can not decode images: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, images)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -900,11 +929,21 @@ func (ah *AdvertHandler) UpdatePriceHistory(w http.ResponseWriter, r *http.Reque
 
 	defer r.Body.Close()
 	adPrice := &models.AdvertPrice{}
-	err := json.NewDecoder(r.Body).Decode(&adPrice)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("can not decode price: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, adPrice)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}

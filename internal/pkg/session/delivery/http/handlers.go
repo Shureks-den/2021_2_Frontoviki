@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"time"
 	internalError "yula/internal/error"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
@@ -54,9 +55,18 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	var signInUser models.UserSignIn
 
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&signInUser)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &signInUser)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)

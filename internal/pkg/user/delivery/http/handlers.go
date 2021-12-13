@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -12,6 +13,7 @@ import (
 	"yula/internal/pkg/user"
 	proto "yula/proto/generated/auth"
 
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 
@@ -61,12 +63,21 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&signUpUser)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &signUpUser)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -191,12 +202,21 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 	userNew := models.UserData{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&userNew)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &userNew)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -324,12 +344,21 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 
 	changePassword := models.ChangePassword{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&changePassword)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &changePassword)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -382,11 +411,21 @@ func (uh *UserHandler) RatingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	inputRating := &models.Rating{}
-	err := json.NewDecoder(r.Body).Decode(&inputRating)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, inputRating)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}

@@ -1,7 +1,7 @@
 package delivery
 
 import (
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	internalError "yula/internal/error"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/sirupsen/logrus"
 )
 
@@ -65,11 +66,21 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 
 	var cartInputed models.CartHandler
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&cartInputed)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &cartInputed)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
@@ -121,13 +132,23 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
 
-	cartInputed := make([]*models.CartHandler, 0)
+	cartInputed := models.CHs{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&cartInputed)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &cartInputed)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
 		w.Write(models.ToBytes(metaCode, metaMessage, nil))
 		return
 	}
