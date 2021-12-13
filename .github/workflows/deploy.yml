@@ -3,15 +3,32 @@ name: deploy
 on:
   push:
     branches:
+      - main
       - dev
+      - deploy
   pull_request:
     branches:
-      - dev
+      - deploy
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run golangci lint
+        uses: golangci/golangci-lint-action@v2.3.0
+        with:
+          version: v1.29
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run test with cover
+        run: cd internal/ | go test -coverpkg=./... -coverprofile=cover ./... && cat cover | grep -v "mock" | grep -v  "easyjson" | grep -v "proto" > cover.out && go tool cover -func=cover.out
 
   build:
     name: Build Docker
+    # needs: test потом расскоментить
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
