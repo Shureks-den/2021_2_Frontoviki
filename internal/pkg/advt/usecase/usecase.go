@@ -269,3 +269,11 @@ func (au *AdvtUsecase) UpdatePromotion(userId int64, promo *models.Promotion) er
 	err = au.advtRepository.UpdatePromo(promo)
 	return err
 }
+
+func (au *AdvtUsecase) GetFavoriteCount(advertId int64) (int64, error) {
+	count, err := au.advtRepository.SelectFavoriteCount(advertId)
+	if err == nil || err == internalError.EmptyQuery {
+		return count, nil
+	}
+	return count, err
+}

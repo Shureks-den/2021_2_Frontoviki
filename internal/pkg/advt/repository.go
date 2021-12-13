@@ -18,6 +18,7 @@ type AdvtRepository interface {
 	InsertImages(advertId int64, newImages []string) error
 	DeleteImages(images []string, advertId int64) error
 
+	SelectFavoriteCount(advertId int64) (int64, error)
 	SelectFavorite(userId, advertId int64) (*models.Advert, error)
 	InsertFavorite(userId, advertId int64) error
 	DeleteFavorite(userId, advertId int64) error

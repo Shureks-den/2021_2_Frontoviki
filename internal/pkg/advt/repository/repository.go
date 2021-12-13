@@ -454,6 +454,26 @@ func (ar *AdvtRepository) SelectFavoriteAdverts(userId int64, from, count int64)
 	return adverts, nil
 }
 
+func (ar *AdvtRepository) SelectFavoriteCount(advertId int64) (int64, error) {
+	queryStr := `
+					SELECT COUNT(advert_id) as cnt 
+					FROM favorite 
+					GROUP BY advert_id
+					HAVING advert_id = $1;`
+	queryRow := ar.DB.QueryRowContext(context.Background(), queryStr, advertId)
+	var count int64
+	err := queryRow.Scan(&count)
+	if err != nil {
+		res, _ := regexp.Match(".*no rows.*", []byte(err.Error()))
+		if res {
+			return 0, internalError.EmptyQuery
+		} else {
+			return 0, internalError.GenInternalError(err)
+		}
+	}
+	return count, nil
+}
+
 func (ar *AdvtRepository) SelectFavorite(userId, advertId int64) (*models.Advert, error) {
 	queryStr := `
 		SELECT a.id, a.Name, a.Description, a.price, a.location, a.latitude, a.longitude, a.published_at, 

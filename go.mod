@@ -6,7 +6,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v4 v4.13.0
-	github.com/joho/godotenv v1.4.0
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871
 )
 

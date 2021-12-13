@@ -28,6 +28,7 @@ type AdvtUsecase interface {
 	UploadImages(files []*multipart.FileHeader, advertId int64, userId int64) (*models.Advert, error)
 	RemoveImages(images []string, advertId, userId int64) error
 
+	GetFavoriteCount(advertId int64) (int64, error)
 	GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error)
 	AddFavorite(userId int64, advertId int64) error
 	RemoveFavorite(userId int64, advertId int64) error

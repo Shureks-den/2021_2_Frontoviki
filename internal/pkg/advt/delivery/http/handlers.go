@@ -289,8 +289,18 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	favCount, err := ah.advtUsecase.GetFavoriteCount(advertId)
+	if err != nil {
+		logger.Debugf("can not get favorite count: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat, PriceHistory: history}
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat,
+		PriceHistory: history, FavoriteCount: favCount}
 	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
 	logger.Debug("advert found successfully")
 }
