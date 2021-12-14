@@ -177,6 +177,27 @@ func (_m *AdvtUsecase) GetAdvertViews(advertId int64) (int64, error) {
 	return r0, r1
 }
 
+// GetFavoriteCount provides a mock function with given fields: advertId
+func (_m *AdvtUsecase) GetFavoriteCount(advertId int64) (int64, error) {
+	ret := _m.Called(advertId)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(int64) int64); ok {
+		r0 = rf(advertId)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetFavoriteList provides a mock function with given fields: userId, page
 func (_m *AdvtUsecase) GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error) {
 	ret := _m.Called(userId, page)
@@ -223,6 +244,29 @@ func (_m *AdvtUsecase) GetListAdvt(from int64, count int64, newest bool) ([]*mod
 	return r0, r1
 }
 
+// GetPriceHistory provides a mock function with given fields: advertId
+func (_m *AdvtUsecase) GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	ret := _m.Called(advertId)
+
+	var r0 []*models.AdvertPrice
+	if rf, ok := ret.Get(0).(func(int64) []*models.AdvertPrice); ok {
+		r0 = rf(advertId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.AdvertPrice)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RemoveFavorite provides a mock function with given fields: userId, advertId
 func (_m *AdvtUsecase) RemoveFavorite(userId int64, advertId int64) error {
 	ret := _m.Called(userId, advertId)
@@ -258,6 +302,34 @@ func (_m *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) er
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int64, *models.Advert) error); ok {
 		r0 = rf(advertId, newAdvert)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateAdvertPrice provides a mock function with given fields: userId, adPrice
+func (_m *AdvtUsecase) UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error {
+	ret := _m.Called(userId, adPrice)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, *models.AdvertPrice) error); ok {
+		r0 = rf(userId, adPrice)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdatePromotion provides a mock function with given fields: userId, promo
+func (_m *AdvtUsecase) UpdatePromotion(userId int64, promo *models.Promotion) error {
+	ret := _m.Called(userId, promo)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, *models.Promotion) error); ok {
+		r0 = rf(userId, promo)
 	} else {
 		r0 = ret.Error(0)
 	}
