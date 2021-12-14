@@ -212,6 +212,27 @@ func (_m *AdvtRepository) SelectFavoriteAdverts(userId int64, from int64, count 
 	return r0, r1
 }
 
+// SelectFavoriteCount provides a mock function with given fields: advertId
+func (_m *AdvtRepository) SelectFavoriteCount(advertId int64) (int64, error) {
+	ret := _m.Called(advertId)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(int64) int64); ok {
+		r0 = rf(advertId)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SelectListAdvt provides a mock function with given fields: isSortedByPublichedDate, from, count
 func (_m *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from int64, count int64) ([]*models.Advert, error) {
 	ret := _m.Called(isSortedByPublichedDate, from, count)
@@ -228,6 +249,29 @@ func (_m *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from int6
 	var r1 error
 	if rf, ok := ret.Get(1).(func(bool, int64, int64) error); ok {
 		r1 = rf(isSortedByPublichedDate, from, count)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SelectPriceHistory provides a mock function with given fields: advertId
+func (_m *AdvtRepository) SelectPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	ret := _m.Called(advertId)
+
+	var r0 []*models.AdvertPrice
+	if rf, ok := ret.Get(0).(func(int64) []*models.AdvertPrice); ok {
+		r0 = rf(advertId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.AdvertPrice)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -263,6 +307,34 @@ func (_m *AdvtRepository) Update(newAdvert *models.Advert) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*models.Advert) error); ok {
 		r0 = rf(newAdvert)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdatePrice provides a mock function with given fields: advertPrice
+func (_m *AdvtRepository) UpdatePrice(advertPrice *models.AdvertPrice) error {
+	ret := _m.Called(advertPrice)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*models.AdvertPrice) error); ok {
+		r0 = rf(advertPrice)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdatePromo provides a mock function with given fields: promo
+func (_m *AdvtRepository) UpdatePromo(promo *models.Promotion) error {
+	ret := _m.Called(promo)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*models.Promotion) error); ok {
+		r0 = rf(promo)
 	} else {
 		r0 = ret.Error(0)
 	}
