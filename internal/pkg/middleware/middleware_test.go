@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,11 +11,14 @@ import (
 
 	myerr "yula/internal/error"
 
-	sessMock "yula/services/auth/mocks"
+	sessMock "yula/internal/services/auth/mocks"
+	"yula/proto/generated/auth"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestMiddleware_CorsMiddleware_Success(t *testing.T) {
@@ -65,12 +69,16 @@ func TestMiddleware_JsonMiddleware_NoApplicationJson(t *testing.T) {
 }
 
 func TestMiddleware_CheckAuthorized_Success(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
 
-	su.On("Check", userSession.Value).Return(&userSession, nil)
+	su.On("Check", mock.Anything, &auth.SessionID{ID: userSession.Value}).Return(&auth.Result{
+		UserID:    userSession.UserId,
+		SessionID: userSession.Value,
+		ExpireAt:  timestamppb.New(userSession.ExpiresAt),
+	}, nil)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -88,19 +96,23 @@ func TestMiddleware_CheckAuthorized_Success(t *testing.T) {
 
 	cookie, err := r.Cookie("session_id")
 	assert.Nil(t, err)
-	session, err := su.Check(cookie.Value)
+	session, err := su.Check(context.Background(), &auth.SessionID{ID: cookie.Value})
 	assert.Nil(t, err)
 
-	assert.Equal(t, int64(0), session.UserId)
+	assert.Equal(t, int64(0), session.UserID)
 }
 
 func TestMiddleware_CheckSoftAuthorized_Success(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
 
-	su.On("Check", userSession.Value).Return(&userSession, nil)
+	su.On("Check", mock.Anything, &auth.SessionID{ID: userSession.Value}).Return(&auth.Result{
+		UserID:    userSession.UserId,
+		SessionID: userSession.Value,
+		ExpireAt:  timestamppb.New(userSession.ExpiresAt),
+	}, nil)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -118,19 +130,23 @@ func TestMiddleware_CheckSoftAuthorized_Success(t *testing.T) {
 
 	cookie, err := r.Cookie("session_id")
 	assert.Nil(t, err)
-	session, err := su.Check(cookie.Value)
+	session, err := su.Check(context.Background(), &auth.SessionID{ID: cookie.Value})
 	assert.Nil(t, err)
 
-	assert.Equal(t, int64(0), session.UserId)
+	assert.Equal(t, int64(0), session.UserID)
 }
 
 func TestMiddleware_CheckAuthorized_InvalidCookieName(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
 
-	su.On("Check", userSession.Value).Return(&userSession, nil)
+	su.On("Check", mock.Anything, &auth.SessionID{ID: userSession.Value}).Return(&auth.Result{
+		UserID:    userSession.UserId,
+		SessionID: userSession.Value,
+		ExpireAt:  timestamppb.New(userSession.ExpiresAt),
+	}, nil)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
@@ -151,12 +167,12 @@ func TestMiddleware_CheckAuthorized_InvalidCookieName(t *testing.T) {
 }
 
 func TestMiddleware_CheckAuthorized_InvalidCookieValue(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	mw := NewSessionMiddleware(&su)
 	caller := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	userSession := models.Session{Value: uuid.NewString(), UserId: 0, ExpiresAt: time.Now().Add(time.Hour)}
 
-	su.On("Check", "wrong_value").Return(nil, myerr.NotExist)
+	su.On("Check", mock.Anything, &auth.SessionID{ID: "wrong_value"}).Return(nil, myerr.NotExist)
 
 	w := httptest.NewRecorder()
 	http.SetCookie(w, &http.Cookie{
