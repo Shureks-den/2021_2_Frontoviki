@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -592,7 +593,6 @@ func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	defer r.Body.Close()
-	images := &models.AdvertImages{}
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Warnf("cannot convert body to bytes: %s", err.Error())
@@ -602,7 +602,8 @@ func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = easyjson.Unmarshal(buf, images)
+	images := &models.AdvertImages{}
+	err = json.Unmarshal(buf, images)
 	if err != nil {
 		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)

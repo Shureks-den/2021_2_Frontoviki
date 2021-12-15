@@ -35,17 +35,6 @@ func (server *ChatServer) NewGRPCServer(listenUrl string) error {
 		return err
 	}
 
-	// serverCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	// if err != nil {
-	// 	server.logger.Error(err.Error())
-	// }
-
-	// Create the credentials and return it
-	// config := &tls.Config{
-	// 	Certificates: []tls.Certificate{serverCert},
-	// 	ClientAuth:   tls.NoClientCert,
-	// }
-
 	serv := grpc.NewServer()
 	proto.RegisterChatServer(serv, server)
 

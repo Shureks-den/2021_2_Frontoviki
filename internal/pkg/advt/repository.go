@@ -2,7 +2,7 @@ package advt
 
 import "yula/internal/models"
 
-//go:generate mockery -name=AdvtRepository
+//go:generate mockery --name=AdvtRepository
 
 type AdvtRepository interface {
 	SelectListAdvt(isSortedByPublichedDate bool, from, count int64) ([]*models.Advert, error)

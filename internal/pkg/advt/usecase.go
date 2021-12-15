@@ -10,7 +10,7 @@ const (
 	MaxPromo int64 = 3
 )
 
-//go:generate mockery -name=AdvtUsecase
+//go:generate mockery --name=AdvtUsecase
 
 type AdvtUsecase interface {
 	GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error)

@@ -935,3 +935,318 @@ func TestUploadImageFailParse(t *testing.T) {
 	assert.Equal(t, Answer.Code, 500)
 	assert.Equal(t, Answer.Message, "internal error")
 }
+
+func TestRemoveImageSuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/{id:[0-9]+}/images", http.HandlerFunc(ah.RemoveImageHandler)).Methods(http.MethodDelete, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	profile := models.Profile{
+		Id:        0,
+		Email:     "aboba@baobab.com",
+		CreatedAt: time.Now(),
+	}
+
+	au.On("RemoveImages", mock.AnythingOfType("[]string"), ad.Id, profile.Id).Return(nil)
+	body := bytes.NewBuffer(nil)
+	buf := models.AdvertImages{
+		ImagesPath: []string{"aboba"},
+	}
+	json.NewEncoder(body).Encode(buf)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/adverts/2/images", srv.URL), bytes.NewReader(body.Bytes()))
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "images removed successfully")
+}
+
+func TestSalesmanPageSuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/salesman/{id:[0-9]+}", http.HandlerFunc(ah.SalesmanPageHandler)).Methods(http.MethodGet, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	profile := models.Profile{
+		Id:        1,
+		Email:     "aboba@baobab.com",
+		CreatedAt: time.Now(),
+	}
+
+	uu.On("GetById", profile.Id).Return(&profile, nil)
+	au.On("GetAdvertListByPublicherId", profile.Id, true, &models.Page{PageNum: 0, Count: 50}).Return([]*models.Advert{&ad}, nil)
+	au.On("AdvertsToShort", []*models.Advert{&ad}).Return([]*models.AdvertShort{ad.ToShort()}, nil)
+	uu.On("GetRating", int64(0), profile.Id).Return(&models.RatingStat{}, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/adverts/salesman/1?page=1&count=50", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "salesman profile provided")
+}
+
+func TestArchiveSuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/archive", http.HandlerFunc(ah.ArchiveHandler)).Methods(http.MethodGet, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	au.On("GetAdvertListByPublicherId", int64(0), false, &models.Page{PageNum: 0, Count: 50}).Return([]*models.Advert{&ad}, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/adverts/archive?page=1&count=50", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "archive got")
+}
+
+func TestAdvertListByCategorySuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/category/aboba", http.HandlerFunc(ah.AdvertListByCategoryHandler)).Methods(http.MethodGet, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	au.On("GetAdvertListByCategory", "aboba", &models.Page{PageNum: 0, Count: 50}).Return([]*models.Advert{&ad}, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/adverts/category/aboba?page=1&count=50", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "adverts got successfully")
+}
+
+func TestFavoriteListSuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/favorite", http.HandlerFunc(ah.FavoriteListHandler)).Methods(http.MethodGet, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	au.On("GetFavoriteList", int64(0), &models.Page{PageNum: 0, Count: 50}).Return([]*models.Advert{&ad}, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/adverts/favorite", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "favorite adverts got successfully")
+}
+
+func TestRemoveFavoriteSuccess(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/favorite/{id:[0-9]+}", http.HandlerFunc(ah.RemoveFavoriteHandler)).Methods(http.MethodDelete, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	au.On("RemoveFavorite", int64(0), int64(142)).Return(nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/adverts/favorite/142", srv.URL), http.NoBody)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "removed from favorite")
+}
+
+func TestUpdatePriceHistory(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/price_history", http.HandlerFunc(ah.UpdatePriceHistory)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	adPrice := &models.AdvertPrice{
+		AdvertId: 1,
+		Price:    1313,
+	}
+
+	b := bytes.NewBuffer(nil)
+	json.NewEncoder(b).Encode(adPrice)
+
+	au.On("UpdateAdvertPrice", int64(0), adPrice).Return(nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/adverts/price_history", srv.URL), bytes.NewReader(b.Bytes()))
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "price of 1 advert updated")
+}
+
+func TestGetPriceHistory(t *testing.T) {
+	au := advtMock.AdvtUsecase{}
+	uu := userMock.UserUsecase{}
+	ah := NewAdvertHandler(&au, &uu)
+
+	router := mux.NewRouter().PathPrefix("/adverts").Subrouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/price_history/{id:[0-9]+}", http.HandlerFunc(ah.GetPriceHistory)).Methods(http.MethodGet, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	ad := models.Advert{
+		Id:          2,
+		Name:        "aboba",
+		Amount:      8,
+		PublisherId: 0,
+	}
+
+	adPrice := &models.AdvertPrice{
+		AdvertId: 1,
+		Price:    1313,
+	}
+
+	au.On("GetPriceHistory", ad.Id).Return([]*models.AdvertPrice{adPrice}, nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/adverts/price_history/2", srv.URL), http.NoBody)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "favorite adverts got successfully")
+}
