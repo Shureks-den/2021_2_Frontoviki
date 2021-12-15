@@ -29,11 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Run test with cover
-        run: cd internal/ | go test -coverpkg=./... -coverprofile=cover ./... && cat cover | grep -v "mock" | grep -v  "easyjson" | grep -v "proto" > cover.out && go tool cover -func=cover.out
+        run: |
+          sudo apt-get install libvips
+          make test
 
   build:
     name: Build Docker
-    # needs: test потом расскоментить
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
