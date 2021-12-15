@@ -113,4 +113,4 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /home/zennoma/deploy_backend
-            docker-compose up
+            docker-compose up -d
