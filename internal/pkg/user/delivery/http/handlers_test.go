@@ -693,3 +693,40 @@ func TestRatingHandlerError2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 400, Answer.Code)
 }
+
+func TestRatingHandlerError3(t *testing.T) {
+	su := sessMock.AuthClient{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
+
+	router := mux.NewRouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/profile/rating", http.HandlerFunc(uh.RatingHandler)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	rating := &models.Rating{
+		UserFrom: 0,
+		UserTo:   2,
+		Rating:   5,
+	}
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(rating)
+	assert.Nil(t, err)
+
+	uu.On("SetRating", rating).Return(myerr.InternalError)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/profile/rating", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.NoError(t, err)
+	assert.Equal(t, 500, Answer.Code)
+}
