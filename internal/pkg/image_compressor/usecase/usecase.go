@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"strings"
-	"yula/internal/models"
 	imagecompressor "yula/internal/pkg/image_compressor"
 	"yula/internal/pkg/logging"
 
@@ -29,13 +28,6 @@ func NewImageCompressorUsecase(icr imagecompressor.ImageCompressorRepository) im
 		imageCompressorRepository: icr,
 		sheduler:                  nil,
 	}
-}
-
-func (icu *ImageCompressorUsecase) StartByCron(config *models.ImageCompressorConfig) error {
-	icu.sheduler = gocron.NewScheduler(config.Start.UTC().Location())
-	_, err := icu.sheduler.Every(config.EveryHours).Minute().Do(icu.HandleImages, config.PathToDir)
-	icu.sheduler.StartAsync()
-	return err
 }
 
 func (icu *ImageCompressorUsecase) HandleImages(folders []string) error {
@@ -89,12 +81,4 @@ func (icu *ImageCompressorUsecase) CompressImage(file fs.FileInfo, folder string
 		return newFilename, true, err
 	}
 	return "", false, nil
-}
-
-func (icu *ImageCompressorUsecase) StopJob() {
-	if icu.sheduler != nil && icu.sheduler.IsRunning() {
-		icu.sheduler.Stop()
-		icu.sheduler.Clear()
-		fmt.Println("stop job")
-	}
 }
