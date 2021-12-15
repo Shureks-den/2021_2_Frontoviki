@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"runtime"
@@ -21,7 +22,10 @@ func (hook *writerHook) Fire(entry *logrus.Entry) error {
 		return err
 	}
 	for _, w := range hook.Writer {
-		w.Write([]byte(line))
+		_, err = w.Write([]byte(line))
+		if err != nil {
+			log.Printf("cannot write answer to body %s", err.Error())
+		}
 	}
 	return err
 }

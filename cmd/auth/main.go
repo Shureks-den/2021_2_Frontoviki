@@ -42,6 +42,8 @@ func main() {
 	su := sessUse.NewSessionUsecase(sr)
 
 	grpcAuth := authServer.NewAuthGRPCServer(logrus.New(), su)
-	grpcAuth.NewGRPCServer(config.Cfg.GetAuthEndPoint())
-
+	err := grpcAuth.NewGRPCServer(config.Cfg.GetAuthEndPoint())
+	if err != nil {
+		logger.Errorf("error with load grpc: %s", err.Error())
+	}
 }

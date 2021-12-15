@@ -76,7 +76,10 @@ func (ch *ChatHandler) CreateDialog(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -94,12 +97,18 @@ func (ch *ChatHandler) CreateDialog(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "dialog create success", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "dialog create success", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("dialog create success")
 }
 
@@ -157,7 +166,7 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 			return
 		}
 
-		ch.cu.Create(context.Background(), &proto.Message{
+		_, err = ch.cu.Create(context.Background(), &proto.Message{
 			MI: &proto.MessageIdentifier{
 				IdFrom: session.idFrom,
 				IdTo:   session.idTo,
@@ -166,6 +175,9 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 			Msg:       string(msg),
 			CreatedAt: timestamppb.Now(),
 		})
+		if err != nil {
+			logger.Warnf("cannot create proto message %s", err.Error())
+		}
 
 		key := fmt.Sprintf("%d->%d:%d", session.idTo, session.idFrom, session.idAdv)
 		to := chatSessions[key]
@@ -190,7 +202,10 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -205,7 +220,10 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -226,7 +244,10 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -248,13 +269,19 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyChatHistory{Messages: messages}
-	w.Write(models.ToBytes(http.StatusOK, "chat history found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "chat history found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("chat history found successfully")
 }
 
@@ -269,7 +296,10 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -284,12 +314,18 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "clear chat success", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "clear chat success", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("clear chat success")
 }
 
@@ -301,7 +337,10 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -311,7 +350,10 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -332,7 +374,10 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 				w.WriteHeader(http.StatusOK)
 
 				metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-				w.Write(models.ToBytes(metaCode, metaMessage, nil))
+				_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+				if err != nil {
+					logger.Warnf("cannot write answer to body %s", err.Error())
+				}
 				return
 			}
 
@@ -345,7 +390,10 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusOK)
 
 			metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			if err != nil {
+				logger.Warnf("cannot write answer to body %s", err.Error())
+			}
 			return
 		}
 
@@ -360,6 +408,9 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyDialogs{Dialogs: dialogs}
-	w.Write(models.ToBytes(http.StatusOK, "dialogs found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "dialogs found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("dialogs found successfully")
 }

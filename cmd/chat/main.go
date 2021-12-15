@@ -60,5 +60,9 @@ func main() {
 	chu := chatUse.NewChatUsecase(chr)
 
 	grpcChat := chatServer.NewChatGRPCServer(logrus.New(), chu)
-	grpcChat.NewGRPCServer(config.Cfg.GetChatEndPoint())
+	err := grpcChat.NewGRPCServer(config.Cfg.GetChatEndPoint())
+	if err != nil {
+		logger.Errorf("error with load grpc: %s", err.Error())
+		return
+	}
 }

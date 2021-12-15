@@ -64,7 +64,10 @@ func (cu *ChatUsecase) Create(message *models.Message) error {
 func (cu *ChatUsecase) Clear(iDialog *models.IDialog) error {
 	dialog, err := cu.chatRepo.SelectDialog(iDialog)
 	if dialog != nil {
-		cu.chatRepo.DeleteDialog(dialog.ToIDialog())
+		err := cu.chatRepo.DeleteDialog(dialog.ToIDialog())
+		if err != nil && err != internalError.EmptyQuery {
+			return err
+		}
 	}
 
 	if err != nil && err != internalError.EmptyQuery {

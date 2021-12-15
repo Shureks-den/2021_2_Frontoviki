@@ -187,7 +187,8 @@ func (uu *UserUsecase) UpdatePassword(userId int64, changePassword *models.Chang
 
 func (uu *UserUsecase) SetRating(rating *models.Rating) error {
 	lastRating, err := uu.userRatingRepository.SelectRating(rating.UserFrom, rating.UserTo)
-	var rate, count int = 0, 0
+	var count int
+	var rate int
 
 	// если рейтинга нет и намерение удалить рейтинг
 	if err == internalError.EmptyQuery && rating.Rating == 0 {

@@ -966,7 +966,10 @@ func TestRemoveImageSuccess(t *testing.T) {
 	buf := models.AdvertImages{
 		ImagesPath: []string{"aboba"},
 	}
-	json.NewEncoder(body).Encode(buf)
+	err := json.NewEncoder(body).Encode(buf)
+	if err != nil {
+		logger.Warnf("trouble with encoder %s", err.Error())
+	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/adverts/2/images", srv.URL), bytes.NewReader(body.Bytes()))
@@ -1189,7 +1192,10 @@ func TestUpdatePriceHistory(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	json.NewEncoder(b).Encode(adPrice)
+	err := json.NewEncoder(b).Encode(adPrice)
+	if err != nil {
+		logger.Warnf("trouble with encoder %s", err.Error())
+	}
 
 	au.On("UpdateAdvertPrice", int64(0), adPrice).Return(nil)
 

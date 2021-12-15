@@ -62,5 +62,8 @@ func main() {
 	catu := categoryUse.NewCategoryUsecase(catr)
 
 	grpcCategory := categoryServer.NewCategoryGRPCServer(logrus.New(), catu)
-	grpcCategory.NewGRPCServer(config.Cfg.GetCategoryEndPoint())
+	err := grpcCategory.NewGRPCServer(config.Cfg.GetCategoryEndPoint())
+	if err != nil {
+		logger.Errorf("error with grpc server: %s", err.Error())
+	}
 }

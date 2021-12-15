@@ -164,7 +164,6 @@ func main() {
 	port := config.Cfg.GetMainPort()
 	fmt.Printf("start serving ::%s\n", port)
 
-	var error error
-	error = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
+	error := http.ListenAndServe(fmt.Sprintf(":%s", port), r)
 	logger.Errorf("http serve error %v", error)
 }

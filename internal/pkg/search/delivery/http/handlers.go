@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"log"
 	"net/http"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -59,7 +60,10 @@ func (sh *SearchHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			log.Printf("error writing response %v", err.Error())
+		}
 		return
 	}
 
@@ -68,7 +72,10 @@ func (sh *SearchHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not create search filter: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			log.Printf("error writing response %v", err.Error())
+		}
 		return
 	}
 
@@ -77,7 +84,10 @@ func (sh *SearchHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			log.Printf("error writing response %v", err.Error())
+		}
 		return
 	}
 
@@ -90,11 +100,17 @@ func (sh *SearchHandler) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not use search: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			log.Printf("error writing response %v", err.Error())
+		}
 		return
 	}
 
 	body := models.HttpBodyAdverts{Advert: adverts}
-	w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("adverts found successfully")
 }

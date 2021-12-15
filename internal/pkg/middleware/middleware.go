@@ -45,7 +45,10 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 			w.WriteHeader(http.StatusOK)
 
-			w.Write(models.ToBytes(http.StatusUnauthorized, "named cookie not present", nil))
+			_, err := w.Write(models.ToBytes(http.StatusUnauthorized, "named cookie not present", nil))
+			if err != nil {
+				log.Printf("error with writing error to response %v\n", err.Error())
+			}
 			return
 		}
 
@@ -60,7 +63,10 @@ func (sm *SessionMiddleware) CheckAuthorized(next http.Handler) http.Handler {
 			w.Header().Add("Location", r.Host+"/signin") // указываем в качестве перенаправления страницу входа
 			w.WriteHeader(http.StatusOK)
 
-			w.Write(models.ToBytes(http.StatusUnauthorized, "no rights to access this resource", nil))
+			_, err = w.Write(models.ToBytes(http.StatusUnauthorized, "no rights to access this resource", nil))
+			if err != nil {
+				log.Printf("error writing response to body: %v\n", err.Error())
+			}
 			return
 		}
 
@@ -136,7 +142,10 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 			if !strings.Contains(contentType, "multipart/form-data") {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: multipart/form-data required", nil))
+				_, err := w.Write(models.ToBytes(http.StatusBadRequest, "content-type: multipart/form-data required", nil))
+				if err != nil {
+					log.Printf("error writing to body %v", err.Error())
+				}
 				return
 			}
 
@@ -148,7 +157,10 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 			if !strings.Contains(contentType, "application/x-www-form-urlencoded") {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/x-www-form-urlencoded required", nil))
+				_, err := w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/x-www-form-urlencoded required", nil))
+				if err != nil {
+					log.Printf("cannot write answer to body %s", err.Error())
+				}
 				return
 			}
 
@@ -156,7 +168,10 @@ func ContentTypeMiddleware(next http.Handler) http.Handler {
 			if contentType != "application/json" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/json required", nil))
+				_, err := w.Write(models.ToBytes(http.StatusBadRequest, "content-type: application/json required", nil))
+				if err != nil {
+					log.Printf("cannot write answer to body %s", err.Error())
+				}
 				return
 			}
 		}
@@ -185,7 +200,10 @@ func Routing(r *mux.Router) {
 
 func CSRFHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "csrf setted", nil))
+	_, err := w.Write(models.ToBytes(http.StatusOK, "csrf setted", nil))
+	if err != nil {
+		log.Printf("cannot write answer to body %s", err.Error())
+	}
 }
 
 func SetSCRFToken(next http.Handler) http.HandlerFunc {
@@ -212,6 +230,9 @@ func CSRFErrorHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.CSRFErrorToken)
 		w.WriteHeader(metaCode)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			log.Printf("cannot write answer to body %s", err.Error())
+		}
 	}
 }
