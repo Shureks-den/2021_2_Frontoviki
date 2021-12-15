@@ -34,7 +34,7 @@ jobs:
       - name: Run test with cover
         run: |
           go version
-          sudo apt-get install libvips
+          sudo apt-get install libvips-dev
           make test
 
   build:
