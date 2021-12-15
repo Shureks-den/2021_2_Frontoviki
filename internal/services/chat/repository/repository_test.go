@@ -25,7 +25,7 @@ func TestSelectMessagesOk(t *testing.T) {
 	}
 	defer db.Close()
 
-	message := models.Message{MI: models.IMessage{0, 1, 1}, Msg: "qwerty", CreatedAt: ParseTime()}
+	message := models.Message{MI: models.IMessage{IdFrom: 0, IdTo: 1, IdAdv: 1}, Msg: "qwerty", CreatedAt: ParseTime()}
 	repo := NewChatRepository(db)
 	rows := sqlmock.NewRows([]string{"user_from", "user_to", "adv_id", "msg", "created_at"})
 	rows.AddRow(message.MI.IdFrom, message.MI.IdTo, message.MI.IdAdv, message.Msg, message.CreatedAt)
@@ -45,7 +45,7 @@ func TestInsertMessageOk(t *testing.T) {
 	}
 	defer db.Close()
 
-	message := models.Message{MI: models.IMessage{0, 1, 1}, Msg: "qwerty", CreatedAt: ParseTime()}
+	message := models.Message{MI: models.IMessage{IdFrom: 0, IdTo: 1, IdAdv: 1}, Msg: "qwerty", CreatedAt: ParseTime()}
 	repo := NewChatRepository(db)
 
 	mock.ExpectBegin()
@@ -67,7 +67,7 @@ func TestInsertMessageError(t *testing.T) {
 	}
 	defer db.Close()
 
-	message := models.Message{MI: models.IMessage{0, 1, 1}, Msg: "qwerty", CreatedAt: ParseTime()}
+	message := models.Message{MI: models.IMessage{IdFrom: 0, IdTo: 1, IdAdv: 1}, Msg: "qwerty", CreatedAt: ParseTime()}
 	repo := NewChatRepository(db)
 
 	mock.ExpectBegin()
@@ -88,7 +88,7 @@ func TestDeleteMessagesOk(t *testing.T) {
 	}
 	defer db.Close()
 
-	message := models.Message{MI: models.IMessage{0, 1, 1}, Msg: "qwerty", CreatedAt: ParseTime()}
+	message := models.Message{MI: models.IMessage{IdFrom: 0, IdTo: 1, IdAdv: 1}, Msg: "qwerty", CreatedAt: ParseTime()}
 	repo := NewChatRepository(db)
 
 	mock.ExpectBegin()
@@ -110,7 +110,7 @@ func TestDeleteMessagesError(t *testing.T) {
 	}
 	defer db.Close()
 
-	message := models.Message{MI: models.IMessage{0, 1, 1}, Msg: "qwerty", CreatedAt: ParseTime()}
+	message := models.Message{MI: models.IMessage{IdFrom: 0, IdTo: 1, IdAdv: 1}, Msg: "qwerty", CreatedAt: ParseTime()}
 	repo := NewChatRepository(db)
 
 	mock.ExpectBegin()
