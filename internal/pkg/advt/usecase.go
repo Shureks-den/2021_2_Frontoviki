@@ -39,4 +39,6 @@ type AdvtUsecase interface {
 	UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error
 
 	UpdatePromotion(userId int64, promo *models.Promotion) error
+
+	GetRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error)
 }

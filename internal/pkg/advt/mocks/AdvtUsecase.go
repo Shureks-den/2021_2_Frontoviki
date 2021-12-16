@@ -267,6 +267,29 @@ func (_m *AdvtUsecase) GetPriceHistory(advertId int64) ([]*models.AdvertPrice, e
 	return r0, r1
 }
 
+// GetRecomendations provides a mock function with given fields: advertId, count, userId
+func (_m *AdvtUsecase) GetRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error) {
+	ret := _m.Called(advertId, count, userId)
+
+	var r0 []*models.Advert
+	if rf, ok := ret.Get(0).(func(int64, int64, int64) []*models.Advert); ok {
+		r0 = rf(advertId, count, userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.Advert)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64, int64, int64) error); ok {
+		r1 = rf(advertId, count, userId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RemoveFavorite provides a mock function with given fields: userId, advertId
 func (_m *AdvtUsecase) RemoveFavorite(userId int64, advertId int64) error {
 	ret := _m.Called(userId, advertId)

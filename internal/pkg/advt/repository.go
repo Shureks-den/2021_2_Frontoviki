@@ -30,4 +30,8 @@ type AdvtRepository interface {
 	UpdatePrice(advertPrice *models.AdvertPrice) error
 
 	UpdatePromo(promo *models.Promotion) error
+
+	RegenerateRecomendations() error
+	SelectRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error)
+	SelectDummyRecomendations(count int64) ([]*models.Advert, error)
 }

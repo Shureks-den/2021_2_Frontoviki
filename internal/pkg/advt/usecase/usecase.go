@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"log"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -276,4 +277,25 @@ func (au *AdvtUsecase) GetFavoriteCount(advertId int64) (int64, error) {
 		return count, nil
 	}
 	return count, err
+}
+
+func (au *AdvtUsecase) GetRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error) {
+	// err := au.advtRepository.RegenerateRecomendations()
+	// if err != nil {
+	// 	log.Printf("1: %s", err.Error())
+	// 	return nil, err
+	// }
+
+	adverts, err := au.advtRepository.SelectRecomendations(advertId, count, userId)
+	if err != nil {
+		log.Printf("2: %s", err.Error())
+		return nil, err
+	}
+
+	if len(adverts) != 0 {
+		return adverts, err
+	}
+
+	adverts, err = au.advtRepository.SelectDummyRecomendations(count)
+	return adverts, err
 }

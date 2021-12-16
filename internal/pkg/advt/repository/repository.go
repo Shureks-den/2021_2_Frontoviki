@@ -678,3 +678,199 @@ func (ar *AdvtRepository) UpdatePromo(promo *models.Promotion) error {
 
 	return nil
 }
+
+func (ar *AdvtRepository) RegenerateRecomendations() error {
+	tx, err := ar.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return internalError.GenInternalError(err)
+	}
+
+	queryStr := `
+					INSERT INTO recomendations
+					SELECT 
+						t3.target_id,
+						t3.rec_id,
+						COUNT(*) as cnt
+					FROM (
+						SELECT 
+							t1.advert_id as target_id, 
+							t1.user_id,
+							t2.advert_id as rec_id
+						FROM favorite as t1
+						JOIN favorite as t2 ON t1.user_id = t2.user_id
+						WHERE t1.advert_id != t2.advert_id
+					) as t3
+					GROUP BY target_id, rec_id
+					ORDER BY cnt DESC, target_id, rec_id;
+	`
+	_, err = tx.ExecContext(context.Background(), queryStr)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return internalError.RollbackError
+		}
+		return internalError.GenInternalError(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return internalError.NotCommited
+	}
+
+	return nil
+}
+
+func (ar *AdvtRepository) SelectRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error) {
+	vars := make([]interface{}, 0)
+	queryStr := `
+					SELECT 
+						r1.rec_id, t1.name, t1.description, t1.price, t1.location, t1.latitude, t1.longitude,
+						t1.published_at, t1.date_close, t1.is_active, t1.views, t1.publisher_id, t1.cat_name,
+						t1.images, t1.amount, t1.is_new, t1.promo_level
+					FROM (
+						SELECT 
+							t4.rec_id,
+							SUM(t4.cnt) as shows
+						FROM (
+							SELECT 
+								t3.target_id as target_id,
+								t3.rec_id as rec_id,
+								COUNT(*) as cnt
+							FROM (
+								SELECT 
+									t1.advert_id as target_id, 
+									t1.user_id,
+									t2.advert_id as rec_id
+								FROM favorite as t1
+								JOIN favorite as t2 ON t1.user_id = t2.user_id
+								WHERE t1.advert_id != t2.advert_id
+							) as t3
+							GROUP BY target_id, rec_id
+							ORDER BY cnt DESC, target_id, rec_id
+						) as t4
+						WHERE t4.target_id = $1 
+							%s 
+						GROUP BY t4.rec_id
+						ORDER BY shows DESC
+					) as r1
+					JOIN (
+						SELECT 
+							a.id as advert_id, a.Name as name, a.Description as description, a.price as price, 
+							a.location as location, a.latitude as latitude, a.longitude as longitude, 
+							a.published_at as published_at, a.date_close as date_close, a.is_active as is_active, 
+							a.views as views, a.publisher_id as publisher_id, c.name as cat_name, 
+							array_agg(ai.img_path) as images, a.amount as amount, a.is_new as is_new, p.promo_level as promo_level
+						FROM advert a
+						JOIN category c ON a.category_id = c.Id
+						JOIN promotion as p ON a.id = p.advert_id
+						LEFT JOIN advert_image ai ON a.id = ai.advert_id 
+						GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
+					) as t1 ON r1.rec_id = t1.advert_id
+					WHERE t1.is_active
+					LIMIT $2;
+	`
+	vars = append(vars, advertId, count)
+	if userId != 0 {
+		queryStr = fmt.Sprintf(queryStr, "AND t4.rec_id NOT IN (SELECT advert_id FROM favorite WHERE user_id = $3)")
+		vars = append(vars, userId)
+	} else {
+		queryStr = fmt.Sprintf(queryStr, "")
+	}
+
+	query, err := ar.DB.Query(queryStr, vars...)
+	if err != nil {
+		return nil, internalError.GenInternalError(err)
+	}
+
+	defer query.Close()
+	adverts := make([]*models.Advert, 0)
+	for query.Next() {
+		var advert models.Advert
+		var images string
+
+		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
+
+		if err != nil {
+			return nil, internalError.GenInternalError(err)
+		}
+
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
+		}
+
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
+		}
+
+		adverts = append(adverts, &advert)
+	}
+	return adverts, nil
+}
+
+func (ar *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Advert, error) {
+	queryStr := `
+					SELECT 
+						f1.advert_id, t1.name, t1.description, t1.price, t1.location, t1.latitude, t1.longitude,
+						t1.published_at, t1.date_close, t1.is_active, t1.views, t1.publisher_id, t1.cat_name,
+						t1.images, t1.amount, t1.is_new, t1.promo_level
+					FROM (
+						SELECT 
+							advert_id,
+							COUNT(*) as cnt
+						FROM favorite
+						GROUP BY advert_id
+						ORDER BY cnt DESC
+					) as f1 JOIN (
+						SELECT 
+							a.id as advert_id, a.Name as name, a.Description as description, a.price as price, 
+							a.location as location, a.latitude as latitude, a.longitude as longitude, 
+							a.published_at as published_at, a.date_close as date_close, a.is_active as is_active, 
+							a.views as views, a.publisher_id as publisher_id, c.name as cat_name, 
+							array_agg(ai.img_path) as images, a.amount as amount, a.is_new as is_new, p.promo_level as promo_level
+						FROM advert a
+						JOIN category c ON a.category_id = c.Id
+						JOIN promotion as p ON a.id = p.advert_id
+						LEFT JOIN advert_image ai ON a.id = ai.advert_id 
+						GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
+							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
+					) as t1 ON f1.advert_id = t1.advert_id
+					LIMIT $1;
+	`
+	query, err := ar.DB.Query(queryStr, count)
+	if err != nil {
+		return nil, internalError.GenInternalError(err)
+	}
+
+	defer query.Close()
+	adverts := make([]*models.Advert, 0)
+	for query.Next() {
+		var advert models.Advert
+		var images string
+
+		err = query.Scan(&advert.Id, &advert.Name, &advert.Description, &advert.Price, &advert.Location, &advert.Latitude,
+			&advert.Longitude, &advert.PublishedAt, &advert.DateClose, &advert.IsActive, &advert.Views,
+			&advert.PublisherId, &advert.Category, &images, &advert.Amount, &advert.IsNew, &advert.PromoLevel)
+
+		if err != nil {
+			return nil, internalError.GenInternalError(err)
+		}
+
+		advert.Images = make([]string, 0)
+		if images[1:len(images)-1] != "NULL" {
+			advert.Images = strings.Split(images[1:len(images)-1], ",")
+			sort.Strings(advert.Images)
+		}
+
+		if len(advert.Images) == 0 {
+			advert.Images = append(advert.Images, imageloader.DefaultAdvertImage)
+		}
+
+		adverts = append(adverts, &advert)
+	}
+	return adverts, nil
+}

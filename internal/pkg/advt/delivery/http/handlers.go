@@ -65,6 +65,8 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/price_history/{id:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.GetPriceHistory)))).Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/promotion", ah.HandlePromotion).Methods(http.MethodPost, http.MethodOptions)
+
+	s.Handle("/recomendations/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.RecomendationsHandler))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func (ah *AdvertHandler) HandlePromotion(w http.ResponseWriter, r *http.Request) {
@@ -1216,6 +1218,46 @@ func (ah *AdvertHandler) GetPriceHistory(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyPriceHistory{History: priceHistory}
 	_, err = w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+}
+
+func (ah *AdvertHandler) RecomendationsHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse id adv: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	recs, err := ah.advtUsecase.GetRecomendations(advertId, 10, userId)
+	if err != nil {
+		logger.Warnf("can not get recomendations: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: recs}
+	_, err = w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
 	if err != nil {
 		logger.Warnf("cannot write answer to body %s", err.Error())
 	}
