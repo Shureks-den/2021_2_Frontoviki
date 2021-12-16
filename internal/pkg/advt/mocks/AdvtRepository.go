@@ -180,13 +180,13 @@ func (_m *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 	return r0, r1
 }
 
-// SelectDummyRecomendations provides a mock function with given fields: count
-func (_m *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Advert, error) {
-	ret := _m.Called(count)
+// SelectDummyRecomendations provides a mock function with given fields: advertId, count
+func (_m *AdvtRepository) SelectDummyRecomendations(advertId int64, count int64) ([]*models.Advert, error) {
+	ret := _m.Called(advertId, count)
 
 	var r0 []*models.Advert
-	if rf, ok := ret.Get(0).(func(int64) []*models.Advert); ok {
-		r0 = rf(count)
+	if rf, ok := ret.Get(0).(func(int64, int64) []*models.Advert); ok {
+		r0 = rf(advertId, count)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*models.Advert)
@@ -194,8 +194,8 @@ func (_m *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Adve
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(count)
+	if rf, ok := ret.Get(1).(func(int64, int64) error); ok {
+		r1 = rf(advertId, count)
 	} else {
 		r1 = ret.Error(1)
 	}

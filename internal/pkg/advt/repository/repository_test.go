@@ -1034,9 +1034,9 @@ func TestSelectDummyRecomendationsOk(t *testing.T) {
 		testadvert.Longitude, testadvert.PublishedAt, testadvert.DateClose, testadvert.IsActive, testadvert.Views, testadvert.PublisherId,
 		testadvert.Category, testimages, testadvert.Amount, testadvert.IsNew, testadvert.PromoLevel,
 	)
-	mock.ExpectQuery("SELECT").WithArgs(int64(10)).WillReturnRows(rows)
+	mock.ExpectQuery("SELECT").WithArgs(int64(0), int64(10)).WillReturnRows(rows)
 
-	_, err = repo.SelectDummyRecomendations(int64(10))
+	_, err = repo.SelectDummyRecomendations(int64(0), int64(10))
 
 	assert.NoError(t, err)
 	err = mock.ExpectationsWereMet()
@@ -1060,9 +1060,9 @@ func TestSelectDummyRecomendationsError(t *testing.T) {
 		testadvert.Longitude, testadvert.PublishedAt, testadvert.DateClose, testadvert.IsActive, testadvert.Views, testadvert.PublisherId,
 		testadvert.Category, testimages, testadvert.Amount, testadvert.IsNew, testadvert.PromoLevel,
 	)
-	mock.ExpectQuery("SELECT").WithArgs(int64(10))
+	mock.ExpectQuery("SELECT").WithArgs(int64(0), int64(10))
 
-	_, err = repo.SelectDummyRecomendations(int64(10))
+	_, err = repo.SelectDummyRecomendations(int64(0), int64(10))
 
 	assert.Error(t, err)
 	err = mock.ExpectationsWereMet()
