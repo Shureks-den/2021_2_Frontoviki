@@ -54,6 +54,7 @@ jobs:
           make
           sudo make install
           sudo ldconfig
+          cd ..
           make test
 
   build:
