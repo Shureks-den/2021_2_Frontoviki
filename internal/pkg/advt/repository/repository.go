@@ -751,7 +751,6 @@ func (ar *AdvtRepository) SelectRecomendations(advertId int64, count int64, user
 						WHERE t4.target_id = $1 
 							%s 
 						GROUP BY t4.rec_id
-						ORDER BY shows DESC
 					) as r1
 					JOIN (
 						SELECT 
@@ -768,6 +767,7 @@ func (ar *AdvtRepository) SelectRecomendations(advertId int64, count int64, user
 							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
 					) as t1 ON r1.rec_id = t1.advert_id
 					WHERE t1.is_active
+					ORDER BY r1.shows DESC
 					LIMIT $2;
 	`
 	vars = append(vars, advertId, count)
@@ -812,7 +812,7 @@ func (ar *AdvtRepository) SelectRecomendations(advertId int64, count int64, user
 	return adverts, nil
 }
 
-func (ar *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Advert, error) {
+func (ar *AdvtRepository) SelectDummyRecomendations(advertId int64, count int64) ([]*models.Advert, error) {
 	queryStr := `
 					SELECT 
 						f1.advert_id, t1.name, t1.description, t1.price, t1.location, t1.latitude, t1.longitude,
@@ -839,9 +839,11 @@ func (ar *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Adve
 						GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
 					) as t1 ON f1.advert_id = t1.advert_id
-					LIMIT $1;
+					WHERE f1.advert_id != $1
+					ORDER BY f1.cnt DESC
+					LIMIT $2;
 	`
-	query, err := ar.DB.Query(queryStr, count)
+	query, err := ar.DB.Query(queryStr, advertId, count)
 	if err != nil {
 		return nil, internalError.GenInternalError(err)
 	}

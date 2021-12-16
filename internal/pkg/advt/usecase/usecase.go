@@ -296,6 +296,6 @@ func (au *AdvtUsecase) GetRecomendations(advertId int64, count int64, userId int
 		return adverts, err
 	}
 
-	adverts, err = au.advtRepository.SelectDummyRecomendations(count)
+	adverts, err = au.advtRepository.SelectDummyRecomendations(advertId, count)
 	return adverts, err
 }

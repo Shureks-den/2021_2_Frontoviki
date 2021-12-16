@@ -642,7 +642,7 @@ func TestGetRecomendationsOk(t *testing.T) {
 	userId := int64(0)
 
 	ar.On("SelectRecomendations", advert.Id, count, userId).Return(adverts, nil)
-	ar.On("SelectDummyRecomendations", count).Return(adverts, nil)
+	ar.On("SelectDummyRecomendations", advert.Id, count).Return(adverts, nil)
 
 	_, err := au.GetRecomendations(advert.Id, count, userId)
 	assert.NoError(t, err)
@@ -672,7 +672,7 @@ func TestGetRecomendationsError2(t *testing.T) {
 	userId := int64(0)
 
 	ar.On("SelectRecomendations", advert.Id, count, userId).Return(adverts, nil)
-	ar.On("SelectDummyRecomendations", count).Return([]*models.Advert{advert}, nil)
+	ar.On("SelectDummyRecomendations", advert.Id, count).Return([]*models.Advert{advert}, nil)
 
 	_, err := au.GetRecomendations(advert.Id, count, userId)
 	assert.NoError(t, err)

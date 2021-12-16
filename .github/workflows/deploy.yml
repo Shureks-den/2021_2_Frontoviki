@@ -17,13 +17,23 @@ jobs:
     steps:
       # установка либы для работы с картинками
       - run: |
-          sudo apt-get install libvips
+          sudo apt-get install libjpeg-dev
+          sudo apt-get install libpng-dev
+          sudo apt-get install libwebp-dev
+          wget "https://github.com/libvips/libvips/releases/download/v8.12.1/vips-8.12.1.tar.gz"
+          tar xf vips-8.12.1.tar.gz
+          cd vips-8.12.1/
+          ./configure --with-png-includes --with-png-libraries --with-jpeg-includes --with-jpeg-libraries
+          make
+          sudo make install
+          sudo ldconfig
 
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.29
+          args: --timeout=20m
   test:
     runs-on: ubuntu-latest
     needs: lint
@@ -34,8 +44,17 @@ jobs:
           go-version: '^1.17.1'
       - name: Run test with cover
         run: |
-          go version
-          sudo apt-get install libvips-dev
+          sudo apt-get install libjpeg-dev
+          sudo apt-get install libpng-dev
+          sudo apt-get install libwebp-dev
+          wget "https://github.com/libvips/libvips/releases/download/v8.12.1/vips-8.12.1.tar.gz"
+          tar xf vips-8.12.1.tar.gz
+          cd vips-8.12.1/
+          ./configure --with-png-includes --with-png-libraries --with-jpeg-includes --with-jpeg-libraries
+          make
+          sudo make install
+          sudo ldconfig
+          cd ..
           make test
 
   build:
