@@ -840,6 +840,7 @@ func (ar *AdvtRepository) SelectDummyRecomendations(advertId int64, count int64)
 							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
 					) as t1 ON f1.advert_id = t1.advert_id
 					WHERE f1.advert_id != $1
+					ORDER BY f1.cnt DESC
 					LIMIT $2;
 	`
 	query, err := ar.DB.Query(queryStr, advertId, count)
