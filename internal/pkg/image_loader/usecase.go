@@ -4,9 +4,10 @@ import "mime/multipart"
 
 const (
 	AvatarsDirectory     string = "static/avatars"
-	DefaultAvatar        string = AvatarsDirectory + "/default_avatar.png"
+	DefaultAvatar        string = AvatarsDirectory + "/default_avatar"
 	AdvertImageDirectory string = "static/advertimages"
-	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image.png"
+	DefaultAdvertImage   string = AdvertImageDirectory + "/default_image"
+	CompressedFormat     string = "webp"
 )
 
 //go:generate mockery -name=ImageLoaderUsecase

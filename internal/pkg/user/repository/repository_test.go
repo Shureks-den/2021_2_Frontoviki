@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql/driver"
-	"fmt"
 	"testing"
 	"time"
 	"yula/internal/models"
@@ -44,10 +43,6 @@ var teststat = &models.RatingStat{
 	RatingAvg:    4.5,
 	PersonalRate: 4,
 	IsRated:      true,
-}
-
-func TimeToString(t time.Time) string {
-	return fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d.185743", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 }
 
 func TestUserInsertOk(t *testing.T) {

@@ -23,14 +23,16 @@ type Advert struct {
 	Views       int64     `json:"views" valid:"-" swaggerignore:"true"`
 	Amount      int64     `json:"amount" valid:"int,optional" swaggerignore:"true"`
 	IsNew       bool      `json:"is_new" valid:"optional"`
+	PromoLevel  int64     `json:"promo_level" valid:"optional,numeric"`
 }
 
 type AdvertShort struct {
-	Id       int64  `json:"id" example:"1"`
-	Name     string `json:"name" example:"anime's t-shirt"`
-	Price    int    `json:"price" example:"100"`
-	Location string `json:"location" example:"Moscow"`
-	Image    string `json:"image" example:"/static/advert_images/default_image.png"`
+	Id         int64  `json:"id" example:"1"`
+	Name       string `json:"name" example:"anime's t-shirt"`
+	Price      int    `json:"price" example:"100"`
+	Location   string `json:"location" example:"Moscow"`
+	Image      string `json:"image" example:"/static/advert_images/default_image.png"`
+	PromoLevel int64  `json:"promo_level" valid:"optional,numeric"`
 }
 
 func (a *Advert) ToShort() *AdvertShort {
@@ -41,7 +43,7 @@ func (a *Advert) ToShort() *AdvertShort {
 		imageStr = a.Images[0]
 	}
 	return &AdvertShort{
-		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr,
+		Id: a.Id, Name: a.Name, Price: a.Price, Location: a.Location, Image: imageStr, PromoLevel: a.PromoLevel,
 	}
 }
 
@@ -78,4 +80,16 @@ func NewPage(pageNumS string, countS string) (*Page, error) {
 
 type AdvertImages struct {
 	ImagesPath []string `json:"images"`
+}
+
+type AdvertPrice struct {
+	AdvertId   int64     `json:"advert_id" valid:"-"`
+	Price      int64     `json:"price" valid:"numeric"`
+	ChangeTime time.Time `json:"change_time" valid:"-"`
+}
+
+type Promotion struct {
+	AdvertId   int64     `json:"advert_id" valid:"-"`
+	PromoLevel int64     `json:"promo_level" valid:"numeric"`
+	UpdateTime time.Time `json:"promo_updated" valid:"-"`
 }

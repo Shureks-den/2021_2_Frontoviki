@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
+	"strings"
 	internalError "yula/internal/error"
 	imageloader "yula/internal/pkg/image_loader"
 )
@@ -41,9 +43,16 @@ func (ilr *ImageLoaderRepository) Delete(filePath string) error {
 		return nil
 	}
 
-	err := os.Remove(filePath)
+	err := os.Remove(fmt.Sprintf("%s.%s", filePath, imageloader.CompressedFormat))
 	if err != nil {
-		return internalError.UnableToRemove
+		parts := strings.Split(filePath, "__")
+		if len(parts) != 2 {
+			return internalError.UnableToRemove
+		}
+		err = os.Remove(fmt.Sprintf("%s.%s", filePath, parts[1]))
+		if err != nil {
+			return internalError.UnableToRemove
+		}
 	}
 	return nil
 }

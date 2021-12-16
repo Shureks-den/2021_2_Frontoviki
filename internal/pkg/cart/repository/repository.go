@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log"
 	"regexp"
 	internalError "yula/internal/error"
 	"yula/internal/models"
@@ -86,7 +87,10 @@ func (cr *CartRepository) Update(cart *models.Cart) error {
 func (cr *CartRepository) Insert(cart *models.Cart) error {
 	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
-		internalError.GenInternalError(err)
+		err = internalError.GenInternalError(err)
+		if err != nil {
+			log.Printf("%v", err.Error())
+		}
 	}
 
 	queryStr := "INSERT INTO cart (user_id, advert_id, amount) VALUES ($1, $2, $3);"
@@ -111,7 +115,10 @@ func (cr *CartRepository) Insert(cart *models.Cart) error {
 func (cr *CartRepository) Delete(cart *models.Cart) error {
 	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
-		internalError.GenInternalError(err)
+		err = internalError.GenInternalError(err)
+		if err != nil {
+			log.Printf("trouble with getting internal error %s", err.Error())
+		}
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1 AND advert_id = $2;"
@@ -136,7 +143,10 @@ func (cr *CartRepository) Delete(cart *models.Cart) error {
 func (cr *CartRepository) DeleteAll(userId int64) error {
 	tx, err := cr.DB.BeginTx(context.Background(), nil)
 	if err != nil {
-		internalError.GenInternalError(err)
+		err = internalError.GenInternalError(err)
+		if err != nil {
+			log.Printf("trouble with getting internal error %s", err.Error())
+		}
 	}
 
 	queryStr := "DELETE FROM cart WHERE user_id = $1;"

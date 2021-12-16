@@ -2,10 +2,13 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/advt"
@@ -15,6 +18,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
@@ -56,6 +60,66 @@ func (ah *AdvertHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware
 	s.Handle("/favorite", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.FavoriteListHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.AddFavoriteHandler))).Methods(http.MethodPost, http.MethodOptions)
 	s.Handle("/favorite/{id:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ah.RemoveFavoriteHandler))).Methods(http.MethodDelete, http.MethodOptions)
+
+	s.Handle("/price_history", sm.CheckAuthorized(http.HandlerFunc(ah.UpdatePriceHistory))).Methods(http.MethodPost, http.MethodOptions)
+	s.Handle("/price_history/{id:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ah.GetPriceHistory)))).Methods(http.MethodGet, http.MethodOptions)
+
+	r.HandleFunc("/promotion", ah.HandlePromotion).Methods(http.MethodPost, http.MethodOptions)
+
+	s.Handle("/recomendations/{id:[0-9]+}", middleware.SetSCRFToken(sm.SoftCheckAuthorized(ah.RecomendationsHandler))).Methods(http.MethodGet, http.MethodOptions)
+}
+
+func (ah *AdvertHandler) HandlePromotion(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+
+	err := r.ParseForm()
+	fmt.Println("request.Form::")
+	for key, value := range r.Form {
+		fmt.Printf("Key:%s, Value:%s\n", key, value)
+	}
+	fmt.Println("\nrequest.PostForm::")
+	for key, value := range r.PostForm {
+		fmt.Printf("Key:%s, Value:%s\n", key, value)
+	}
+	if err != nil {
+		logger.Warnf("invalid form: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("invalid write: %s", err.Error())
+		}
+		return
+	}
+
+	label := r.PostFormValue("label")
+	fmt.Println(label)
+	vals := strings.Split(label, "__")
+	userId, _ := strconv.ParseInt(vals[0], 10, 64)
+	adId, _ := strconv.ParseInt(vals[1], 10, 64)
+	lvl, _ := strconv.ParseInt(vals[2], 10, 64)
+	promo := &models.Promotion{
+		AdvertId:   adId,
+		PromoLevel: lvl,
+	}
+
+	err = ah.advtUsecase.UpdatePromotion(userId, promo)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(models.ToBytes(http.StatusOK, "promotion updated successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // AdvertListHandler godoc
@@ -75,7 +139,10 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -84,7 +151,10 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -94,13 +164,19 @@ func (ah *AdvertHandler) AdvertListHandler(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 
 	body := models.HttpBodyAdverts{Advert: advts}
-	w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("adverts found successfully")
 }
 
@@ -123,13 +199,28 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 
 	var advert models.Advert
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&advert)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &advert)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -144,7 +235,10 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -154,13 +248,19 @@ func (ah *AdvertHandler) CreateAdvertHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertShort{AdvertShort: *advert.ToShort()}
-	w.Write(models.ToBytes(http.StatusCreated, "advert created successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusCreated, "advert created successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("advert created successfully")
 }
 
@@ -187,7 +287,10 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -197,7 +300,10 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -206,7 +312,10 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not get views: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -216,7 +325,10 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -225,13 +337,44 @@ func (ah *AdvertHandler) AdvertDetailHandler(w http.ResponseWriter, r *http.Requ
 		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	history, err := ah.advtUsecase.GetPriceHistory(advertId)
+	if err != nil {
+		logger.Debugf("can not get price history: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	favCount, err := ah.advtUsecase.GetFavoriteCount(advertId)
+	if err != nil {
+		logger.Debugf("can not get favorite count: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat}
-	w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
+	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman, Rating: *rateStat,
+		PriceHistory: history, FavoriteCount: favCount}
+	_, err = w.Write(models.ToBytes(http.StatusOK, "advert found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("advert found successfully")
 }
 
@@ -260,19 +403,37 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	var newAdvert models.Advert
 	defer r.Body.Close()
-	err = json.NewDecoder(r.Body).Decode(&newAdvert)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("can not decode adv: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &newAdvert)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -280,7 +441,10 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		logger.Info("no rights to access")
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusConflict, "no rights to access", nil))
+		_, err = w.Write(models.ToBytes(http.StatusConflict, "no rights to access", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -295,7 +459,10 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -305,13 +472,19 @@ func (ah *AdvertHandler) AdvertUpdateHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvert{Advert: newAdvert}
-	w.Write(models.ToBytes(http.StatusCreated, "advert updated successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusCreated, "advert updated successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("advert updated successfully")
 }
 
@@ -339,7 +512,10 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -349,12 +525,18 @@ func (ah *AdvertHandler) DeleteAdvertHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "advert deleted successfully", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "advert deleted successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("advert deleted successfully")
 }
 
@@ -382,7 +564,10 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -392,12 +577,18 @@ func (ah *AdvertHandler) CloseAdvertHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "advert closed successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("advert closed successfully")
 }
 
@@ -424,7 +615,10 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -435,7 +629,10 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.InternalError)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -444,7 +641,10 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -455,7 +655,10 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -465,13 +668,19 @@ func (ah *AdvertHandler) UploadImageHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdvertDetail{Advert: *advert, Salesman: *salesman}
-	w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "images uploaded successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("image uploaded successfully")
 }
 
@@ -498,18 +707,37 @@ func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	defer r.Body.Close()
-	images := &models.AdvertImages{}
-	err = json.NewDecoder(r.Body).Decode(&images)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("can not decode images: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	images := &models.AdvertImages{}
+	err = json.Unmarshal(buf, images)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -518,12 +746,18 @@ func (ah *AdvertHandler) RemoveImageHandler(w http.ResponseWriter, r *http.Reque
 		logger.Warnf("can not delete images of %d advert: %s", advertId, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "images removed successfully", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "images removed successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // SalesmanPageHandler godoc
@@ -551,7 +785,10 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not parse string: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -560,7 +797,10 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not parse path: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -570,7 +810,10 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -579,7 +822,10 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not parse path: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -588,7 +834,10 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not get adverts: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -599,13 +848,19 @@ func (ah *AdvertHandler) SalesmanPageHandler(w http.ResponseWriter, r *http.Requ
 		logger.Debugf("can not get user's statistic with id %d: %s", salesman.Id, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodySalesmanPage{Salesman: *salesman, Adverts: shortAdverts, Rating: *rateStat}
-	w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "salesman profile provided", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // SalesmanPageHandler godoc
@@ -629,7 +884,10 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 		logger.Warnf("can not parse path: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -639,7 +897,10 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 		logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -648,13 +909,19 @@ func (ah *AdvertHandler) ArchiveHandler(w http.ResponseWriter, r *http.Request) 
 		logger.Warnf("unable to got adverts: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
-	w.Write(models.ToBytes(http.StatusOK, "archive got", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "archive got", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // AdvertListByCategoryHandler godoc
@@ -679,7 +946,10 @@ func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *h
 		logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -690,13 +960,19 @@ func (ah *AdvertHandler) AdvertListByCategoryHandler(w http.ResponseWriter, r *h
 		logger.Warnf("can not get adverts: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
-	w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "adverts got successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // FavoriteListHandler godoc
@@ -723,7 +999,10 @@ func (ah *AdvertHandler) FavoriteListHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not create page: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -732,13 +1011,19 @@ func (ah *AdvertHandler) FavoriteListHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("can not get favorite list: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyAdverts{Advert: adverts}
-	w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // AddFavoriteHandler godoc
@@ -764,7 +1049,10 @@ func (ah *AdvertHandler) AddFavoriteHandler(w http.ResponseWriter, r *http.Reque
 		logger.Warnf("can not parse string: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -773,12 +1061,18 @@ func (ah *AdvertHandler) AddFavoriteHandler(w http.ResponseWriter, r *http.Reque
 		logger.Warnf("can not add to favorite: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "added to favorite", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "added to favorite", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // RemoveFavoriteHandler godoc
@@ -804,7 +1098,10 @@ func (ah *AdvertHandler) RemoveFavoriteHandler(w http.ResponseWriter, r *http.Re
 		logger.Warnf("can not parse string: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -813,10 +1110,155 @@ func (ah *AdvertHandler) RemoveFavoriteHandler(w http.ResponseWriter, r *http.Re
 		logger.Warnf("can not remove from favorite: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "removed from favorite", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "removed from favorite", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+}
+
+func (ah *AdvertHandler) UpdatePriceHistory(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+
+	defer r.Body.Close()
+	adPrice := &models.AdvertPrice{}
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, adPrice)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	_, err = govalidator.ValidateStruct(adPrice)
+	if err != nil {
+		logger.Warnf("invalid data: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = ah.advtUsecase.UpdateAdvertPrice(userId, adPrice)
+	if err != nil {
+		logger.Warnf("can not decode images: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(models.ToBytes(http.StatusOK, fmt.Sprintf("price of %d advert updated", adPrice.AdvertId), nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+}
+
+func (ah *AdvertHandler) GetPriceHistory(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse string: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	priceHistory, err := ah.advtUsecase.GetPriceHistory(advertId)
+	if err != nil {
+		logger.Warnf("can not get price history of advert %d: %s", advertId, err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyPriceHistory{History: priceHistory}
+	_, err = w.Write(models.ToBytes(http.StatusOK, "favorite adverts got successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+}
+
+func (ah *AdvertHandler) RecomendationsHandler(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+	var userId int64 = 0
+	if r.Context().Value(middleware.ContextUserId) != nil {
+		userId = r.Context().Value(middleware.ContextUserId).(int64)
+	}
+	vars := mux.Vars(r)
+	advertId, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		logger.Warnf("can not parse id adv: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	recs, err := ah.advtUsecase.GetRecomendations(advertId, 10, userId)
+	if err != nil {
+		logger.Warnf("can not get recomendations: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	body := models.HttpBodyAdverts{Advert: recs}
+	_, err = w.Write(models.ToBytes(http.StatusOK, "adverts found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }

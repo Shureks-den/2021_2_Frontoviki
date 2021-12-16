@@ -16,13 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func ParseTime() time.Time {
-	testime := "2014-11-12 11:45:26.371"
-	layout := "2006-01-02 15:04:05.000"
-	te, _ := time.Parse(layout, testime)
-	return te
-}
-
 func TestSearchHandlerOk(t *testing.T) {
 	su := mocks.SearchUsecase{}
 	sh := NewSearchHandler(&su)

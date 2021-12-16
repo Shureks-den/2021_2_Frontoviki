@@ -1,3 +1,4 @@
+-- DROP TABLE promotion;
 -- DROP TABLE views_;
 -- DROP TABLE rating_statistics;
 -- DROP TABLE rating;
@@ -129,26 +130,34 @@ CREATE TABLE IF NOT EXISTS views_ (
 CREATE TABLE IF NOT EXISTS messages (
 	user_from int NOT NULL,
 	user_to int NOT NULL,
-	adv_id int NOT NULL,
+	adv_id int,
 	msg VARCHAR(255),
 
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-	FOREIGN KEY (user_from) REFERENCES users (id) ON DELETE RESTRICT,
-	FOREIGN KEY (user_to) REFERENCES users (id) ON DELETE RESTRICT,
-	FOREIGN KEY (adv) REFERENCES advert (id) ON DELETE SET NULL
+	FOREIGN KEY (user_from) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY (user_to) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY (adv_id) REFERENCES advert (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS dialogs (
 	user1 int NOT NULL,
 	user2 int NOT NULL,
-	adv_id int NOT NULL,
+	adv_id int,
 
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-	FOREIGN KEY (user1) REFERENCES users (id) ON DELETE RESTRICT,
-	FOREIGN KEY (user2) REFERENCES users (id) ON DELETE RESTRICT,
-	FOREIGN KEY (adv) REFERENCES advert (id) ON DELETE SET NULL
+	FOREIGN KEY (user1) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY (user2) REFERENCES users (id) ON DELETE SET NULL,
+	FOREIGN KEY (adv_id) REFERENCES advert (id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS promotion (
+	advert_id int NOT NULL,
+	promo_level int NOT NULL DEFAULT 0,
+	promo_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+	FOREIGN KEY (advert_id) REFERENCES advert (id) ON DELETE CASCADE
 );
 
 

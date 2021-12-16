@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"log"
 	"mime/multipart"
 	"time"
 	internalError "yula/internal/error"
@@ -64,6 +65,16 @@ func (au *AdvtUsecase) UpdateAdvert(advertId int64, newAdvert *models.Advert) er
 	newAdvert.PublishedAt = oldAdvert.PublishedAt
 	newAdvert.DateClose = oldAdvert.DateClose
 	newAdvert.IsActive = oldAdvert.IsActive
+
+	if newAdvert.Price != oldAdvert.Price {
+		if err = au.advtRepository.UpdatePrice(&models.AdvertPrice{
+			AdvertId:   newAdvert.Id,
+			Price:      int64(newAdvert.Price),
+			ChangeTime: time.Now(),
+		}); err != nil {
+			return err
+		}
+	}
 
 	err = au.advtRepository.Update(newAdvert)
 	if err != nil {
@@ -210,4 +221,81 @@ func (au *AdvtUsecase) RemoveFavorite(userId int64, advertId int64) error {
 func (au *AdvtUsecase) GetAdvertViews(advertId int64) (int64, error) {
 	views, err := au.advtRepository.SelectViews(advertId)
 	return views, err
+}
+
+func (au *AdvtUsecase) UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error {
+	advert, err := au.advtRepository.SelectById(adPrice.AdvertId)
+	if err != nil {
+		return err
+	}
+
+	if advert.PublisherId != userId || adPrice.Price < 0 {
+		return internalError.Conflict
+	}
+
+	if advert.Price != int(adPrice.Price) {
+		return internalError.AlreadyExist
+	}
+
+	advert.Price = int(adPrice.Price)
+	err = au.advtRepository.Update(advert)
+	if err != nil {
+		return err
+	}
+
+	err = au.advtRepository.UpdatePrice(adPrice)
+	return err
+}
+
+func (au *AdvtUsecase) GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	priceHistory, err := au.advtRepository.SelectPriceHistory(advertId)
+	return priceHistory, err
+}
+
+func (au *AdvtUsecase) UpdatePromotion(userId int64, promo *models.Promotion) error {
+	_, err := au.advtRepository.SelectById(promo.AdvertId)
+	if err != nil {
+		return err
+	}
+
+	// if userId != advert.PublisherId {
+	// 	return internalError.Conflict
+	// }
+
+	if promo.PromoLevel < advt.MinPromo || promo.PromoLevel >= advt.MaxPromo {
+		return internalError.BadRequest
+	}
+
+	promo.UpdateTime = time.Now()
+	err = au.advtRepository.UpdatePromo(promo)
+	return err
+}
+
+func (au *AdvtUsecase) GetFavoriteCount(advertId int64) (int64, error) {
+	count, err := au.advtRepository.SelectFavoriteCount(advertId)
+	if err == nil || err == internalError.EmptyQuery {
+		return count, nil
+	}
+	return count, err
+}
+
+func (au *AdvtUsecase) GetRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error) {
+	// err := au.advtRepository.RegenerateRecomendations()
+	// if err != nil {
+	// 	log.Printf("1: %s", err.Error())
+	// 	return nil, err
+	// }
+
+	adverts, err := au.advtRepository.SelectRecomendations(advertId, count, userId)
+	if err != nil {
+		log.Printf("2: %s", err.Error())
+		return nil, err
+	}
+
+	if len(adverts) != 0 {
+		return adverts, err
+	}
+
+	adverts, err = au.advtRepository.SelectDummyRecomendations(count)
+	return adverts, err
 }

@@ -1,0 +1,116 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - deploy
+  pull_request:
+    branches:
+      - deploy
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      # установка либы для работы с картинками
+      - run: |
+          sudo apt-get install libvips
+
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.29
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17.1'
+      - name: Run test with cover
+        run: |
+          go version
+          sudo apt-get install libvips-dev
+          make test
+
+  build:
+    name: Build Docker
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: dev
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to Docker
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build and push auth
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/auth/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_auth:latest
+      - name: Build and push chat
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/chat/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_chat:latest
+      - name: Build and push category
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/category/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_category:latest
+      - name: Build and push main
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./build/main/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: decadanceeeee/2021_2_frontoviki_main:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: pull docker image
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd /home/zennoma/deploy_backend
+            docker pull decadanceeeee/2021_2_frontoviki_main:latest
+            docker pull decadanceeeee/2021_2_frontoviki_chat:latest
+            docker pull decadanceeeee/2021_2_frontoviki_category:latest
+            docker pull decadanceeeee/2021_2_frontoviki_auth:latest
+      - name: deploy docker image
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          port: ${{ secrets.PORT }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd /home/zennoma/deploy_backend
+            docker-compose up -d

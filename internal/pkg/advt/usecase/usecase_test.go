@@ -471,3 +471,209 @@ func TestGetAdvertViews(t *testing.T) {
 	_, err := au.GetAdvertViews(advertId)
 	assert.NoError(t, err)
 }
+
+func TestUpdateAdvertPriceOk(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: 100}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(adv, nil)
+	ar.On("Update", adv).Return(nil)
+	ar.On("UpdatePrice", &adPrice).Return(nil)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.NoError(t, err)
+}
+
+func TestUpdateAdvertPriceSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: 100}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(adv, nil)
+	ar.On("Update", adv).Return(nil)
+	ar.On("UpdatePrice", &adPrice).Return(nil)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.NoError(t, err)
+}
+
+func TestUpdateAdvertPriceError1(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(nil, myerr.InternalError)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.Error(t, err)
+}
+
+func TestUpdateAdvertPriceError2(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: -100}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(adv, nil)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.Error(t, err)
+}
+
+func TestUpdateAdvertPriceError3(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: 50}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(adv, nil)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.Error(t, err)
+}
+
+func TestUpdateAdvertPriceError4(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := models.AdvertPrice{AdvertId: 0, Price: 100}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", adPrice.AdvertId).Return(adv, nil)
+	ar.On("Update", adv).Return(myerr.InternalError)
+
+	err := au.UpdateAdvertPrice(int64(0), &adPrice)
+	assert.Error(t, err)
+}
+
+func TestGetPriceHistorySuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	adPrice := &models.AdvertPrice{AdvertId: 0, Price: 100}
+	history := []*models.AdvertPrice{adPrice}
+
+	ar.On("SelectPriceHistory", adPrice.AdvertId).Return(history, nil)
+
+	_, err := au.GetPriceHistory(adPrice.AdvertId)
+	assert.NoError(t, err)
+}
+
+func TestUpdatePromotionSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	promo := &models.Promotion{AdvertId: 0, PromoLevel: 1}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", promo.AdvertId).Return(adv, nil)
+	ar.On("UpdatePromo", promo).Return(nil)
+
+	err := au.UpdatePromotion(int64(0), promo)
+	assert.NoError(t, err)
+}
+
+func TestUpdatePromotionError1(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	promo := &models.Promotion{AdvertId: 0, PromoLevel: 1}
+
+	ar.On("SelectById", promo.AdvertId).Return(nil, myerr.InternalError)
+
+	err := au.UpdatePromotion(int64(0), promo)
+	assert.Error(t, err)
+}
+
+func TestUpdatePromotionError2(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	promo := &models.Promotion{AdvertId: 0, PromoLevel: -1}
+	adv := &models.Advert{Id: 0, Price: 100}
+
+	ar.On("SelectById", promo.AdvertId).Return(adv, nil)
+
+	err := au.UpdatePromotion(int64(0), promo)
+	assert.Error(t, err)
+}
+
+func TestGetFavoriteCountSuccess(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advertId := int64(0)
+	count := int64(1)
+
+	ar.On("SelectFavoriteCount", advertId).Return(count, nil)
+
+	_, err := au.GetFavoriteCount(advertId)
+	assert.NoError(t, err)
+}
+
+func TestGetFavoriteCountError(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advertId := int64(0)
+
+	ar.On("SelectFavoriteCount", advertId).Return(int64(0), myerr.InternalError)
+
+	_, err := au.GetFavoriteCount(advertId)
+	assert.Error(t, err)
+}
+
+func TestGetRecomendationsOk(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advert := &models.Advert{Id: int64(0)}
+	adverts := make([]*models.Advert, 0)
+	adverts = append(adverts, advert)
+	count := int64(10)
+	userId := int64(0)
+
+	ar.On("SelectRecomendations", advert.Id, count, userId).Return(adverts, nil)
+	ar.On("SelectDummyRecomendations", count).Return(adverts, nil)
+
+	_, err := au.GetRecomendations(advert.Id, count, userId)
+	assert.NoError(t, err)
+}
+
+func TestGetRecomendationsError1(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advert := &models.Advert{Id: int64(0)}
+	count := int64(10)
+	userId := int64(0)
+
+	ar.On("SelectRecomendations", advert.Id, count, userId).Return(nil, myerr.InternalError)
+
+	_, err := au.GetRecomendations(advert.Id, count, userId)
+	assert.Error(t, err)
+}
+
+func TestGetRecomendationsError2(t *testing.T) {
+	ar := mockAdvt.AdvtRepository{}
+	au := NewAdvtUsecase(&ar, &ilu)
+
+	advert := &models.Advert{Id: int64(0)}
+	adverts := make([]*models.Advert, 0)
+	count := int64(10)
+	userId := int64(0)
+
+	ar.On("SelectRecomendations", advert.Id, count, userId).Return(adverts, nil)
+	ar.On("SelectDummyRecomendations", count).Return([]*models.Advert{advert}, nil)
+
+	_, err := au.GetRecomendations(advert.Id, count, userId)
+	assert.NoError(t, err)
+}

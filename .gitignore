@@ -9,6 +9,7 @@
 
 # Test binary
 *.test
+*cover*
 
 # Output
 *.out
@@ -49,10 +50,10 @@ docs
 # ignore logs
 logs
 
-#ignore docker files
-*docker*
-build
-*database.sql
-
 # config files
+configs/
 config*.yml
+start*
+
+# local metrics
+metricsProd

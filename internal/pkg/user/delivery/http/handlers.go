@@ -2,15 +2,18 @@ package delivery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	internalError "yula/internal/error"
 	"yula/internal/models"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
 	"yula/internal/pkg/user"
-	session "yula/services/auth"
+	proto "yula/proto/generated/auth"
 
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 
@@ -20,10 +23,10 @@ import (
 
 type UserHandler struct {
 	userUsecase    user.UserUsecase
-	sessionUsecase session.SessionUsecase
+	sessionUsecase proto.AuthClient
 }
 
-func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase session.SessionUsecase) *UserHandler {
+func NewUserHandler(userUsecase user.UserUsecase, sessionUsecase proto.AuthClient) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
 		sessionUsecase: sessionUsecase,
@@ -60,13 +63,28 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
 
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&signUpUser)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &signUpUser)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -79,11 +97,17 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = govalidator.ValidateStruct(signUpUser)
 	if err != nil {
 		buf := new(bytes.Buffer)
-		json.NewEncoder(buf).Encode(signUpUser)
+		err = json.NewEncoder(buf).Encode(signUpUser)
+		if err != nil {
+			logger.Warnf("trouble with encoder %s", err.Error())
+		}
 		logger.Warnf("invalid data: %s", buf.String())
 
 		w.WriteHeader(http.StatusOK)
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 	user, servErr := uh.userUsecase.Create(&signUpUser)
@@ -91,18 +115,29 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not create user: %s", servErr.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(servErr)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
-	userSession, err := uh.sessionUsecase.Create(user.Id)
+	protoUserSession, err := uh.sessionUsecase.Create(context.Background(), &proto.UserID{ID: user.Id})
 	if err != nil {
 		logger.Warnf("can not create session based on user %d: %s", user.Id, err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
+	}
+	userSession := models.Session{
+		Value:     protoUserSession.SessionID,
+		ExpiresAt: protoUserSession.ExpireAt.AsTime(),
+		UserId:    protoUserSession.UserID,
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -119,7 +154,10 @@ func (uh *UserHandler) SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	body := models.HttpBodyProfile{Profile: *user.ToProfile()}
-	w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusCreated, "user created successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debugf("user %d created successfully", user.Id)
 }
 
@@ -147,7 +185,10 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -156,13 +197,19 @@ func (uh *UserHandler) GetProfileHandler(w http.ResponseWriter, r *http.Request)
 		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyProfile{Profile: *profile, Rating: *rateStat}
-	w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "profile provided", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debugf("user %d got successfully", userId)
 }
 
@@ -185,13 +232,28 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 
 	userNew := models.UserData{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&userNew)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &userNew)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -207,7 +269,10 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -217,7 +282,10 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -226,13 +294,19 @@ func (uh *UserHandler) UpdateProfileHandler(w http.ResponseWriter, r *http.Reque
 		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyProfile{Profile: *profile, Rating: *rateStat}
-	w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "profile updated", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debugf("user %d profile updated", userId)
 }
 
@@ -260,7 +334,10 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.InternalError)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -269,7 +346,10 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -280,7 +360,10 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.EmptyImageForm)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -289,13 +372,19 @@ func (uh *UserHandler) UploadProfileImageHandler(w http.ResponseWriter, r *http.
 		logger.Debugf("can not get user's statistic with id %d: %s", userId, err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyProfile{Profile: *user.ToProfile(), Rating: *rateStat}
-	w.Write(models.ToBytes(http.StatusOK, "avatar uploaded successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "avatar uploaded successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debugf("user %d avatar uploaded successfully", userId)
 }
 
@@ -318,13 +407,28 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 
 	changePassword := models.ChangePassword{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&changePassword)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &changePassword)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -338,7 +442,10 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -348,12 +455,19 @@ func (uh *UserHandler) ChangePasswordHandler(w http.ResponseWriter, r *http.Requ
 
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "password changed", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "password changed", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+
 	logger.Debugf("user %d changed password successfully", userId)
 }
 
@@ -376,12 +490,28 @@ func (uh *UserHandler) RatingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	inputRating := &models.Rating{}
-	err := json.NewDecoder(r.Body).Decode(&inputRating)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, inputRating)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -389,7 +519,10 @@ func (uh *UserHandler) RatingHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -399,10 +532,16 @@ func (uh *UserHandler) RatingHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("cannot set rating: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "user appreciated", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "user appreciated", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }

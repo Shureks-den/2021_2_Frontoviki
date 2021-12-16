@@ -238,35 +238,6 @@ func TestUpdateUserAlreadyExist(t *testing.T) {
 	assert.Nil(t, newProfile)
 }
 
-// func TestUploadAvatarSuccess(t *testing.T) {
-// 	ur := mocks.UserRepository{}
-// 	mockedILU := imageloaderMocks.ImageLoaderUsecase{}
-// 	rr := mocks.RatingRepository{}
-// 	uu := NewUserUsecase(&ur, &rr, ilu)
-
-// 	user := models.UserData{
-// 		Id:       0,
-// 		Password: "password",
-// 		Email:    "superchel@shibanov.jp",
-// 		Name:     "aboba",
-// 		Image:    "not_default.png",
-// 	}
-
-// 	file := &multipart.FileHeader{
-// 		Filename: "aboba.png",
-// 	}
-
-// 	ur.On("SelectById", user.Id).Return(&user, nil)
-// 	mockedILU.On("UploadAvatar", file).Return("/home/aboba/"+file.Filename, nil)
-// 	mockedILU.On("RemoveAvatar", user.Image).Return(nil)
-// 	ur.On("Update", &user).Return(nil)
-
-// 	_, error := uu.UploadAvatar(file, user.Id)
-// 	// assert.Equal(t, newUser.Image, "/home/aboba/"+file.Filename)
-
-// 	assert.Nil(t, error)
-// }
-
 func TestUpdatePasswordSuccess(t *testing.T) {
 	ur := mocks.UserRepository{}
 	mockedILU := imageloaderMocks.ImageLoaderUsecase{}

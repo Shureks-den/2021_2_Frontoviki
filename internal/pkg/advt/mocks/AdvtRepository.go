@@ -97,6 +97,20 @@ func (_m *AdvtRepository) InsertImages(advertId int64, newImages []string) error
 	return r0
 }
 
+// RegenerateRecomendations provides a mock function with given fields:
+func (_m *AdvtRepository) RegenerateRecomendations() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SelectAdvertsByCategory provides a mock function with given fields: categoryName, from, count
 func (_m *AdvtRepository) SelectAdvertsByCategory(categoryName string, from int64, count int64) ([]*models.Advert, error) {
 	ret := _m.Called(categoryName, from, count)
@@ -166,6 +180,29 @@ func (_m *AdvtRepository) SelectById(advertId int64) (*models.Advert, error) {
 	return r0, r1
 }
 
+// SelectDummyRecomendations provides a mock function with given fields: count
+func (_m *AdvtRepository) SelectDummyRecomendations(count int64) ([]*models.Advert, error) {
+	ret := _m.Called(count)
+
+	var r0 []*models.Advert
+	if rf, ok := ret.Get(0).(func(int64) []*models.Advert); ok {
+		r0 = rf(count)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.Advert)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(count)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SelectFavorite provides a mock function with given fields: userId, advertId
 func (_m *AdvtRepository) SelectFavorite(userId int64, advertId int64) (*models.Advert, error) {
 	ret := _m.Called(userId, advertId)
@@ -212,6 +249,27 @@ func (_m *AdvtRepository) SelectFavoriteAdverts(userId int64, from int64, count 
 	return r0, r1
 }
 
+// SelectFavoriteCount provides a mock function with given fields: advertId
+func (_m *AdvtRepository) SelectFavoriteCount(advertId int64) (int64, error) {
+	ret := _m.Called(advertId)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(int64) int64); ok {
+		r0 = rf(advertId)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SelectListAdvt provides a mock function with given fields: isSortedByPublichedDate, from, count
 func (_m *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from int64, count int64) ([]*models.Advert, error) {
 	ret := _m.Called(isSortedByPublichedDate, from, count)
@@ -228,6 +286,52 @@ func (_m *AdvtRepository) SelectListAdvt(isSortedByPublichedDate bool, from int6
 	var r1 error
 	if rf, ok := ret.Get(1).(func(bool, int64, int64) error); ok {
 		r1 = rf(isSortedByPublichedDate, from, count)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SelectPriceHistory provides a mock function with given fields: advertId
+func (_m *AdvtRepository) SelectPriceHistory(advertId int64) ([]*models.AdvertPrice, error) {
+	ret := _m.Called(advertId)
+
+	var r0 []*models.AdvertPrice
+	if rf, ok := ret.Get(0).(func(int64) []*models.AdvertPrice); ok {
+		r0 = rf(advertId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.AdvertPrice)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(advertId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SelectRecomendations provides a mock function with given fields: advertId, count, userId
+func (_m *AdvtRepository) SelectRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error) {
+	ret := _m.Called(advertId, count, userId)
+
+	var r0 []*models.Advert
+	if rf, ok := ret.Get(0).(func(int64, int64, int64) []*models.Advert); ok {
+		r0 = rf(advertId, count, userId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*models.Advert)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64, int64, int64) error); ok {
+		r1 = rf(advertId, count, userId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -263,6 +367,34 @@ func (_m *AdvtRepository) Update(newAdvert *models.Advert) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*models.Advert) error); ok {
 		r0 = rf(newAdvert)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdatePrice provides a mock function with given fields: advertPrice
+func (_m *AdvtRepository) UpdatePrice(advertPrice *models.AdvertPrice) error {
+	ret := _m.Called(advertPrice)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*models.AdvertPrice) error); ok {
+		r0 = rf(advertPrice)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdatePromo provides a mock function with given fields: promo
+func (_m *AdvtRepository) UpdatePromo(promo *models.Promotion) error {
+	ret := _m.Called(promo)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*models.Promotion) error); ok {
+		r0 = rf(promo)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -1,10 +1,11 @@
 package models
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/mailru/easyjson"
 )
 
 var defaultJsonAnswer string = fmt.Sprintf(
@@ -14,20 +15,20 @@ var defaultJsonAnswer string = fmt.Sprintf(
 )
 
 func ToBytes(code int, message string, body interface{}) []byte {
-	var response interface{}
+	var buf []byte
+	var err error
 	if body == nil {
-		response = HttpError{Code: code, Message: message}
+		response := HttpError{Code: code, Message: message}
+		buf, err = easyjson.Marshal(response)
 	} else {
-		response = HttpBodyInterface{Code: code, Message: message, Body: body}
+		response := HttpBodyInterface{Code: code, Message: message, Body: body}
+		buf, err = easyjson.Marshal(response)
 	}
 
-	js := new(bytes.Buffer)
-	err := json.NewEncoder(js).Encode(response)
 	if err != nil {
 		return []byte(defaultJsonAnswer)
 	}
-
-	return []byte(js.Bytes())
+	return buf
 }
 
 type HttpError struct {
@@ -59,9 +60,11 @@ type HttpBodyAdvert struct {
 }
 
 type HttpBodyAdvertDetail struct {
-	Advert   Advert     `json:"advert"`
-	Salesman Profile    `json:"salesman"`
-	Rating   RatingStat `json:"rating"`
+	Advert        Advert         `json:"advert"`
+	Salesman      Profile        `json:"salesman"`
+	Rating        RatingStat     `json:"rating"`
+	PriceHistory  []*AdvertPrice `json:"price_history"`
+	FavoriteCount int64          `json:"favorite_count"`
 }
 
 type HttpBodySalesmanPage struct {
@@ -94,6 +97,20 @@ type HttpBodyChatHistory struct {
 	Messages []*Message `json:"messages"`
 }
 
+type HttpDialog struct {
+	Id      int64  `json:"id" valid:"int"`
+	Name    string `json:"name" valid:"type(string)"`
+	Surname string `json:"surname" valid:"type(string)"`
+
+	Adv AdvertShort `json:"adv_info"`
+
+	CreatedAt time.Time `json:"created_at" valid:"-" swaggerignore:"true"`
+}
+
 type HttpBodyDialogs struct {
-	Dialogs []*Dialog `json:"dialogs"`
+	Dialogs []*HttpDialog `json:"dialogs"`
+}
+
+type HttpBodyPriceHistory struct {
+	History []*AdvertPrice `json:"history"`
 }

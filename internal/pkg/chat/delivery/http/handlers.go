@@ -7,12 +7,15 @@ import (
 	"net/url"
 	"strconv"
 	"yula/internal/models"
+	"yula/internal/pkg/advt"
 	"yula/internal/pkg/logging"
 	"yula/internal/pkg/middleware"
+	"yula/internal/pkg/user"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	proto "yula/proto/generated/chat"
 
@@ -33,12 +36,16 @@ type ChatSession struct {
 }
 
 type ChatHandler struct {
-	chatUsecase proto.ChatClient
+	cu proto.ChatClient
+	au advt.AdvtUsecase
+	uu user.UserUsecase
 }
 
-func NewChatHandler(cu proto.ChatClient) *ChatHandler {
+func NewChatHandler(cu proto.ChatClient, au advt.AdvtUsecase, uu user.UserUsecase) *ChatHandler {
 	return &ChatHandler{
-		chatUsecase: cu,
+		cu: cu,
+		au: au,
+		uu: uu,
 	}
 }
 
@@ -50,11 +57,59 @@ var upgrader = websocket.Upgrader{
 func (ch *ChatHandler) Routing(r *mux.Router, sm *middleware.SessionMiddleware) {
 	s := r.PathPrefix("/chat").Subrouter()
 	s.HandleFunc("/connect/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ch.ConnectHandler))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/createDialog/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(http.HandlerFunc(ch.CreateDialog))).Methods(http.MethodPost, http.MethodOptions)
 
 	s.HandleFunc("/getDialogs/{idFrom:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ch.getDialogsHandler)))).Methods(http.MethodGet, http.MethodOptions)
 	s.HandleFunc("/getHistory/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", middleware.SetSCRFToken(sm.CheckAuthorized(http.HandlerFunc(ch.getHistoryHandler)))).Methods(http.MethodGet, http.MethodOptions)
 
 	s.Handle("/clear/{idFrom:[0-9]+}/{idTo:[0-9]+}/{idAdv:[0-9]+}", sm.CheckAuthorized(http.HandlerFunc(ch.ClearHandler))).Methods(http.MethodPost, http.MethodOptions)
+}
+
+func (ch *ChatHandler) CreateDialog(w http.ResponseWriter, r *http.Request) {
+	logger = logger.GetLoggerWithFields((r.Context().Value(middleware.ContextLoggerField)).(logrus.Fields))
+
+	vars := mux.Vars(r)
+	idFrom, _ := strconv.ParseInt(vars["idFrom"], 10, 64)
+	idTo, err := strconv.ParseInt(vars["idTo"], 10, 64)
+	idAdv, _ := strconv.ParseInt(vars["idAdv"], 10, 64)
+
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	_, err = ch.cu.CreateDialog(context.Background(), &proto.Dialog{
+		DI: &proto.DialogIdentifier{
+			Id1:   idFrom,
+			Id2:   idTo,
+			IdAdv: idAdv,
+		},
+		CreatedAt: timestamppb.Now(),
+	})
+
+	if err != nil {
+		logger.Warnf("create dialog error: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(models.ToBytes(http.StatusOK, "dialog create success", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
+	logger.Info("dialog create success")
 }
 
 func (ch *ChatHandler) ConnectHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,12 +166,18 @@ func (ch *ChatHandler) HandleMessages(session *ChatSession, conn *websocket.Conn
 			return
 		}
 
-		ch.chatUsecase.Create(context.Background(), &proto.Message{
-			IdFrom: session.idFrom,
-			IdTo:   session.idTo,
-			IdAdv:  session.idAdv,
-			Msg:    string(msg),
+		_, err = ch.cu.Create(context.Background(), &proto.Message{
+			MI: &proto.MessageIdentifier{
+				IdFrom: session.idFrom,
+				IdTo:   session.idTo,
+				IdAdv:  session.idAdv,
+			},
+			Msg:       string(msg),
+			CreatedAt: timestamppb.Now(),
 		})
+		if err != nil {
+			logger.Warnf("cannot create proto message %s", err.Error())
+		}
 
 		key := fmt.Sprintf("%d->%d:%d", session.idTo, session.idFrom, session.idAdv)
 		to := chatSessions[key]
@@ -141,7 +202,10 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -156,36 +220,45 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
-	protomessages, err := ch.chatUsecase.GetHistory(context.Background(), &proto.GetHistoryArg{
+	protomessages, err := ch.cu.GetHistory(context.Background(), &proto.GetHistoryArg{
 		DI: &proto.DialogIdentifier{
-			IdFrom: idFrom,
-			IdTo:   idTo,
-			IdAdv:  idAdv,
+			Id1:   idFrom,
+			Id2:   idTo,
+			IdAdv: idAdv,
 		},
 		FP: &proto.FilterParams{
 			Offset: page.PageNum * page.Count,
 			Limit:  page.Count,
 		},
 	})
+
 	if err != nil {
 		logger.Warnf("get history chat error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	var messages []*models.Message
 	for _, message := range protomessages.M {
 		messages = append(messages, &models.Message{
-			IdFrom:    message.IdFrom,
-			IdTo:      message.IdTo,
-			IdAdv:     message.IdAdv,
+			MI: models.IMessage{
+				IdFrom: message.MI.IdFrom,
+				IdTo:   message.MI.IdTo,
+				IdAdv:  message.MI.IdAdv,
+			},
 			Msg:       message.Msg,
 			CreatedAt: message.CreatedAt.AsTime(),
 		})
@@ -196,13 +269,19 @@ func (ch *ChatHandler) getHistoryHandler(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyChatHistory{Messages: messages}
-	w.Write(models.ToBytes(http.StatusOK, "chat history found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "chat history found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("chat history found successfully")
 }
 
@@ -217,14 +296,17 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
-	_, err = ch.chatUsecase.Clear(context.Background(), &proto.DialogIdentifier{
-		IdFrom: idFrom,
-		IdTo:   idTo,
-		IdAdv:  idAdv,
+	_, err = ch.cu.Clear(context.Background(), &proto.DialogIdentifier{
+		Id1:   idFrom,
+		Id2:   idTo,
+		IdAdv: idAdv,
 	})
 
 	if err != nil {
@@ -232,12 +314,18 @@ func (ch *ChatHandler) ClearHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "clear chat success", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "clear chat success", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("clear chat success")
 }
 
@@ -249,32 +337,80 @@ func (ch *ChatHandler) getDialogsHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
-	protodialogs, err := ch.chatUsecase.GetDialogs(context.Background(), &proto.UserIdentifier{IdFrom: idFrom})
+	protodialogs, err := ch.cu.GetDialogs(context.Background(), &proto.UserIdentifier{IdFrom: idFrom})
 	if err != nil {
 		logger.Warnf("get dialogs error: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
-	var dialogs []*models.Dialog
+	var dialogs []*models.HttpDialog
 	for _, dialog := range protodialogs.D {
-		dialogs = append(dialogs, &models.Dialog{
-			Id1:       dialog.Id1,
-			Id2:       dialog.Id2,
-			IdAdv:     dialog.IdAdv,
+		shortAd := &models.AdvertShort{
+			Id:       -1,
+			Name:     "dummy",
+			Price:    -1,
+			Location: "dummy",
+			Image:    "dummy",
+		}
+
+		if dialog.DI.IdAdv != -1 {
+			ad, err := ch.au.GetAdvert(dialog.DI.IdAdv, -1, false)
+			if err != nil {
+				logger.Warnf("get adv error: %s", err.Error())
+				w.WriteHeader(http.StatusOK)
+
+				metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
+				_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+				if err != nil {
+					logger.Warnf("cannot write answer to body %s", err.Error())
+				}
+				return
+			}
+
+			shortAd = ad.ToShort()
+		}
+
+		user2, err := ch.uu.GetById(dialog.DI.Id2)
+		if err != nil {
+			logger.Warnf("get user error: %s", err.Error())
+			w.WriteHeader(http.StatusOK)
+
+			metaCode, metaMessage := internalError.ToMetaStatus(internalError.NotExist)
+			_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			if err != nil {
+				logger.Warnf("cannot write answer to body %s", err.Error())
+			}
+			return
+		}
+
+		dialogs = append(dialogs, &models.HttpDialog{
+			Id:        user2.Id,
+			Name:      user2.Name,
+			Surname:   user2.Surname,
+			Adv:       *shortAd,
 			CreatedAt: dialog.CreatedAt.AsTime(),
 		})
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyDialogs{Dialogs: dialogs}
-	w.Write(models.ToBytes(http.StatusOK, "dialogs found successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "dialogs found successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Info("dialogs found successfully")
 }

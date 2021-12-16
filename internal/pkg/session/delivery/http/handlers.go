@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"time"
 	internalError "yula/internal/error"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/sirupsen/logrus"
 )
@@ -54,13 +55,28 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	var signInUser models.UserSignIn
 
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&signInUser)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("bad request: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write to body: %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &signInUser)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -73,7 +89,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -83,7 +102,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -93,7 +115,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -103,7 +128,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -118,7 +146,10 @@ func (sh *SessionHandler) SignInHandler(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "signin successfully", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "signin successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("signin successfully")
 }
 
@@ -139,7 +170,10 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.Unauthorized)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -149,7 +183,10 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusOK)
 
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -157,6 +194,9 @@ func (sh *SessionHandler) LogOutHandler(w http.ResponseWriter, r *http.Request) 
 	http.SetCookie(w, session)
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "logout successfully", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "logout successfully", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 	logger.Debug("logout successfully")
 }

@@ -5,7 +5,12 @@ import (
 	"yula/internal/models"
 )
 
-//go:generate mockery -name=AdvtUsecase
+const (
+	MinPromo int64 = 0
+	MaxPromo int64 = 3
+)
+
+//go:generate mockery --name=AdvtUsecase
 
 type AdvtUsecase interface {
 	GetListAdvt(from int64, count int64, newest bool) ([]*models.Advert, error)
@@ -23,9 +28,17 @@ type AdvtUsecase interface {
 	UploadImages(files []*multipart.FileHeader, advertId int64, userId int64) (*models.Advert, error)
 	RemoveImages(images []string, advertId, userId int64) error
 
+	GetFavoriteCount(advertId int64) (int64, error)
 	GetFavoriteList(userId int64, page *models.Page) ([]*models.Advert, error)
 	AddFavorite(userId int64, advertId int64) error
 	RemoveFavorite(userId int64, advertId int64) error
 
 	GetAdvertViews(advertId int64) (int64, error)
+
+	GetPriceHistory(advertId int64) ([]*models.AdvertPrice, error)
+	UpdateAdvertPrice(userId int64, adPrice *models.AdvertPrice) error
+
+	UpdatePromotion(userId int64, promo *models.Promotion) error
+
+	GetRecomendations(advertId int64, count int64, userId int64) ([]*models.Advert, error)
 }

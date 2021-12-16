@@ -17,7 +17,10 @@ import (
 	"yula/internal/pkg/middleware"
 	userMock "yula/internal/pkg/user/mocks"
 
-	sessMock "yula/services/auth/mocks"
+	sessMock "yula/internal/services/auth/mocks"
+	"yula/proto/generated/auth"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	imageloader "yula/internal/pkg/image_loader"
 
@@ -30,7 +33,7 @@ import (
 )
 
 func TestSignUpHandlerValid(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -65,7 +68,11 @@ func TestSignUpHandlerValid(t *testing.T) {
 		UserId:    userCreated.Id,
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
-	su.On("Create", userCreated.Id).Return(&sessionCreated, nil).Once()
+	su.On("Create", mock.Anything, &auth.UserID{ID: userCreated.Id}).Return(&auth.Result{
+		UserID:    sessionCreated.UserId,
+		SessionID: sessionCreated.Value,
+		ExpireAt:  timestamppb.New(sessionCreated.ExpiresAt),
+	}, nil).Once()
 
 	reader := bytes.NewReader(reqBodyBuffer.Bytes())
 	res, err := http.Post(fmt.Sprintf("%s/signup", srv.URL), http.DetectContentType(reqBodyBuffer.Bytes()), reader)
@@ -88,7 +95,7 @@ func TestSignUpHandlerValid(t *testing.T) {
 }
 
 func TestSignUpHandlerUserNotValid(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -107,11 +114,11 @@ func TestSignUpHandlerUserNotValid(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&decodedRes)
 	assert.Nil(t, err)
 
-	assert.Equal(t, decodedRes.Code, http.StatusBadRequest)
+	assert.Equal(t, decodedRes.Code, 500)
 }
 
 func TestSignUpHandlerSameEmail(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -143,7 +150,11 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 		UserId:    userCreated.Id,
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
-	su.On("Create", userCreated.Id).Return(&sessionCreated, nil).Once()
+	su.On("Create", mock.Anything, &auth.UserID{ID: userCreated.Id}).Return(&auth.Result{
+		UserID:    sessionCreated.UserId,
+		SessionID: sessionCreated.Value,
+		ExpireAt:  timestamppb.New(sessionCreated.ExpiresAt),
+	}, nil).Once()
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
@@ -169,7 +180,7 @@ func TestSignUpHandlerSameEmail(t *testing.T) {
 }
 
 func TestSignUpHandlerFailCreateSession(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -194,7 +205,7 @@ func TestSignUpHandlerFailCreateSession(t *testing.T) {
 		Image:     imageloader.DefaultAdvertImage,
 	}
 	uu.On("Create", &reqUser).Return(&userCreated, nil).Once()
-	su.On("Create", userCreated.Id).Return(nil, myerr.InternalError).Once()
+	su.On("Create", mock.Anything, &auth.UserID{ID: userCreated.Id}).Return(nil, myerr.InternalError).Once()
 
 	reqBodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(reqBodyBuffer).Encode(reqUser)
@@ -212,7 +223,7 @@ func TestSignUpHandlerFailCreateSession(t *testing.T) {
 }
 
 func TestUpdateProfileSuccess(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -249,7 +260,7 @@ func TestUpdateProfileSuccess(t *testing.T) {
 }
 
 func TestUpdateProfileFailUpdate(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -285,7 +296,7 @@ func TestUpdateProfileFailUpdate(t *testing.T) {
 }
 
 func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -304,11 +315,11 @@ func TestUpdateProfileHandlerUserNotValid(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&resError)
 	assert.Nil(t, err)
 
-	assert.Equal(t, resError.Code, http.StatusBadRequest)
+	assert.Equal(t, resError.Code, 500)
 }
 
 func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -337,7 +348,7 @@ func TestGetProfileHandlerFailToAccessPage(t *testing.T) {
 }
 
 func TestUploadImageSuccess(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -387,7 +398,7 @@ func TestUploadImageSuccess(t *testing.T) {
 }
 
 func TestUploadImageFailParse(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -418,7 +429,7 @@ func TestUploadImageFailParse(t *testing.T) {
 }
 
 func TestUploadImageFailUploadAvatar(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -462,7 +473,7 @@ func TestUploadImageFailUploadAvatar(t *testing.T) {
 }
 
 func TestChangePasswordSuccess(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -502,7 +513,7 @@ func TestChangePasswordSuccess(t *testing.T) {
 }
 
 func TestChangePasswordFailParse(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -524,12 +535,11 @@ func TestChangePasswordFailParse(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&Answer)
 	assert.Nil(t, err)
 
-	assert.Equal(t, Answer.Code, 400)
-	assert.Equal(t, Answer.Message, "bad request")
+	assert.Equal(t, Answer.Code, 500)
 }
 
 func TestChangePasswordFailUpdate(t *testing.T) {
-	su := sessMock.SessionUsecase{}
+	su := sessMock.AuthClient{}
 	uu := userMock.UserUsecase{}
 	uh := NewUserHandler(&uu, &su)
 
@@ -566,4 +576,157 @@ func TestChangePasswordFailUpdate(t *testing.T) {
 
 	assert.Equal(t, Answer.Code, 500)
 	assert.Equal(t, Answer.Message, "internal error")
+}
+
+func TestRatingHandlerSuccess(t *testing.T) {
+	su := sessMock.AuthClient{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
+
+	router := mux.NewRouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/profile/rating", http.HandlerFunc(uh.RatingHandler)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	rating := &models.Rating{
+		UserFrom: 0,
+		UserTo:   2,
+		Rating:   5,
+	}
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(rating)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	uu.On("SetRating", rating).Return(nil)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/profile/rating", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.Nil(t, err)
+
+	assert.Equal(t, Answer.Code, 200)
+	assert.Equal(t, Answer.Message, "user appreciated")
+}
+
+func TestRatingHandlerError1(t *testing.T) {
+	su := sessMock.AuthClient{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
+
+	router := mux.NewRouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/profile/rating", http.HandlerFunc(uh.RatingHandler)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	rating := &models.Rating{
+		UserFrom: 0,
+		UserTo:   2,
+		Rating:   5,
+	}
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(rating)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	uu.On("SetRating", rating).Return(myerr.InternalError)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/profile/rating", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.NoError(t, err)
+	assert.Equal(t, 500, Answer.Code)
+}
+
+func TestRatingHandlerError2(t *testing.T) {
+	su := sessMock.AuthClient{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
+
+	router := mux.NewRouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/profile/rating", http.HandlerFunc(uh.RatingHandler)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	rating := &models.Rating{
+		UserFrom: 0,
+		UserTo:   2,
+		Rating:   5423421423423423424,
+	}
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(rating)
+	assert.Nil(t, err)
+	reader := bytes.NewReader(reqBodyBuffer.Bytes())
+
+	uu.On("SetRating", rating).Return(myerr.InternalError)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/profile/rating", srv.URL), reader)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.NoError(t, err)
+	assert.Equal(t, 400, Answer.Code)
+}
+
+func TestRatingHandlerError3(t *testing.T) {
+	su := sessMock.AuthClient{}
+	uu := userMock.UserUsecase{}
+	uh := NewUserHandler(&uu, &su)
+
+	router := mux.NewRouter()
+	router.Use(middleware.LoggerMiddleware)
+	router.Handle("/profile/rating", http.HandlerFunc(uh.RatingHandler)).Methods(http.MethodPost, http.MethodOptions)
+
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	rating := &models.Rating{
+		UserFrom: 0,
+		UserTo:   2,
+		Rating:   5,
+	}
+
+	reqBodyBuffer := new(bytes.Buffer)
+	err := json.NewEncoder(reqBodyBuffer).Encode(rating)
+	assert.Nil(t, err)
+
+	uu.On("SetRating", rating).Return(myerr.InternalError)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/profile/rating", srv.URL), nil)
+	assert.Nil(t, err)
+
+	res, err := client.Do(req)
+	assert.Nil(t, err)
+
+	var Answer models.HttpBodyInterface
+	err = json.NewDecoder(res.Body).Decode(&Answer)
+	assert.NoError(t, err)
+	assert.Equal(t, 500, Answer.Code)
 }

@@ -12,9 +12,8 @@ import (
 type config struct {
 	Server struct {
 		Main struct {
-			Host   string
-			Port   string
-			Secure bool
+			Host string
+			Port string
 		}
 	}
 
@@ -34,6 +33,27 @@ type config struct {
 			Password string
 		}
 	}
+
+	Microservices struct {
+		Chat struct {
+			Host string
+			Port string
+		}
+
+		Auth struct {
+			Host string
+			Port string
+		}
+
+		Category struct {
+			Host string
+			Port string
+		}
+	}
+
+	Compressor struct {
+		StaticDirs []string
+	}
 }
 
 var (
@@ -43,7 +63,7 @@ var (
 
 func argparse() (string, string, string) {
 	mode := flag.String("mode", "dev", "config mode")
-	filePath := flag.String("path", ".", "path to config file")
+	filePath := flag.String("path", "./configs", "path to config file")
 
 	flag.Parse()
 
@@ -85,14 +105,7 @@ func (c *config) GetMainPort() string {
 }
 
 func (c *config) GetMainSchema() string {
-	if c.Server.Main.Secure {
-		return "https"
-	}
 	return "http"
-}
-
-func (c *config) IsSecure() bool {
-	return Cfg.Server.Main.Secure
 }
 
 func (c *config) GetPostgresUrl() string {
@@ -132,4 +145,23 @@ func GetEnv(key, defaultValue string) string {
 	}
 
 	return defaultValue
+}
+
+func (c *config) GetChatEndPoint() string {
+	return fmt.Sprintf("%s:%s", c.Microservices.Chat.Host, c.Microservices.Chat.Port)
+}
+
+func (c *config) GetAuthEndPoint() string {
+	fmt.Println(c.Microservices.Auth.Host)
+	fmt.Println(c.Microservices.Auth.Port)
+
+	return fmt.Sprintf("%s:%s", c.Microservices.Auth.Host, c.Microservices.Auth.Port)
+}
+
+func (c *config) GetCategoryEndPoint() string {
+	return fmt.Sprintf("%s:%s", c.Microservices.Category.Host, c.Microservices.Category.Port)
+}
+
+func (c *config) GetStaticDirs() []string {
+	return c.Compressor.StaticDirs
 }

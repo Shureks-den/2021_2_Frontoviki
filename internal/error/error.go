@@ -118,6 +118,21 @@ var (
 		Code:    http.StatusInternalServerError,
 		Message: "unable to remove",
 	}
+
+	ImageNotExist error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "image not exist",
+	}
+
+	UnableToConvert error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "unable to convert",
+	}
+
+	NotConverted error = ServerAnswer{
+		Code:    http.StatusInternalServerError,
+		Message: "image not converted",
+	}
 )
 
 func ToMetaStatus(err error) (int, string) {

@@ -1,7 +1,7 @@
 package delivery
 
 import (
-	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	internalError "yula/internal/error"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gorilla/mux"
+	"github.com/mailru/easyjson"
 	"github.com/sirupsen/logrus"
 )
 
@@ -65,12 +66,28 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 
 	var cartInputed models.CartHandler
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&cartInputed)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Errorf(err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &cartInputed)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Errorf(err.Error())
+		}
 		return
 	}
 
@@ -78,7 +95,10 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		logger.Warnf("invalid data: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		_, err := w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+		if err != nil {
+			logger.Errorf(err.Error())
+		}
 		return
 	}
 
@@ -87,7 +107,10 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 		logger.Warnf("unable to get the advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write response to body: %s", err.Error())
+		}
 		return
 	}
 
@@ -96,12 +119,18 @@ func (ch *CartHandler) UpdateOneAdvertHandler(w http.ResponseWriter, r *http.Req
 		logger.Warnf("unable to update the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "successfully updated", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "successfully updated", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // UpdateAllCartHandler godoc
@@ -121,14 +150,30 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		userId = r.Context().Value(middleware.ContextUserId).(int64)
 	}
 
-	cartInputed := make([]*models.CartHandler, 0)
+	cartInputed := models.CHs{}
 	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&cartInputed)
+	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Warnf("invalid body: %s", err.Error())
+		logger.Warnf("cannot convert body to bytes: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
-		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
+		return
+	}
+
+	err = easyjson.Unmarshal(buf, &cartInputed)
+	if err != nil {
+		logger.Warnf("cannot unmarshal: %s", err.Error())
+		w.WriteHeader(http.StatusOK)
+
+		metaCode, metaMessage := internalError.ToMetaStatus(err)
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -137,7 +182,10 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			logger.Warnf("invalid data: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
-			w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+			_, err = w.Write(models.ToBytes(http.StatusBadRequest, "invalid data", nil))
+			if err != nil {
+				logger.Warnf("cannot write answer to body %s", err.Error())
+			}
 			return
 		}
 	}
@@ -149,7 +197,10 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
-			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			if err != nil {
+				logger.Warnf("cannot write answer to body %s", err.Error())
+			}
 			return
 		}
 
@@ -161,13 +212,19 @@ func (ch *CartHandler) UpdateAllCartHandler(w http.ResponseWriter, r *http.Reque
 		logger.Warnf("unable to update the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyCartAll{Cart: cart, Adverts: advs, Hints: messages}
-	w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // GetCartHandler godoc
@@ -191,7 +248,10 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("unable to get the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -205,7 +265,10 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Warnf("unable to get the advert: %s", err.Error())
 			w.WriteHeader(http.StatusOK)
 			metaCode, metaMessage := internalError.ToMetaStatus(err)
-			w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+			if err != nil {
+				logger.Warnf("cannot write answer to body %s", err.Error())
+			}
 			return
 		}
 
@@ -220,13 +283,19 @@ func (ch *CartHandler) GetCartHandler(w http.ResponseWriter, r *http.Request) {
 
 		logger.Warnf("cart contain archived advert")
 		w.WriteHeader(http.StatusOK)
-		w.Write(models.ToBytes(http.StatusConflict, "cart contain archived advert: "+s, nil))
+		_, err = w.Write(models.ToBytes(http.StatusConflict, "cart contain archived advert: "+s, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyCart{Cart: cart, Adverts: adverts}
-	w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "successfully updated", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // GetCartHandler godoc
@@ -250,12 +319,18 @@ func (ch *CartHandler) ClearCartHandler(w http.ResponseWriter, r *http.Request) 
 		logger.Warnf("unable to clear the cart: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(models.ToBytes(http.StatusOK, "cart cleared", nil))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "cart cleared", nil))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }
 
 // CheckoutHandler godoc
@@ -281,7 +356,10 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not parse id adv: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(internalError.BadRequest)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -290,7 +368,10 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("error with getting order: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -299,7 +380,10 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("error with getting advert: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -308,7 +392,10 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("error with getting salesman: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
@@ -317,11 +404,17 @@ func (ch *CartHandler) CheckoutHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Warnf("can not make order: %s", err.Error())
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err = w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Warnf("cannot write answer to body %s", err.Error())
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyOrder{Salesman: *salesman, Order: *order}
-	w.Write(models.ToBytes(http.StatusOK, "order made successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "order made successfully", body))
+	if err != nil {
+		logger.Warnf("cannot write answer to body %s", err.Error())
+	}
 }

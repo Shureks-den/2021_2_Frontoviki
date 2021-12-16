@@ -48,7 +48,10 @@ func (ch CategoryHandler) CategoriesListHandler(w http.ResponseWriter, r *http.R
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		metaCode, metaMessage := internalError.ToMetaStatus(err)
-		w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		_, err := w.Write(models.ToBytes(metaCode, metaMessage, nil))
+		if err != nil {
+			logger.Errorf(err.Error())
+		}
 		return
 	}
 
@@ -61,5 +64,8 @@ func (ch CategoryHandler) CategoriesListHandler(w http.ResponseWriter, r *http.R
 
 	w.WriteHeader(http.StatusOK)
 	body := models.HttpBodyCategories{Categories: categories}
-	w.Write(models.ToBytes(http.StatusOK, "categories got successfully", body))
+	_, err = w.Write(models.ToBytes(http.StatusOK, "categories got successfully", body))
+	if err != nil {
+		logger.Errorf(err.Error())
+	}
 }
