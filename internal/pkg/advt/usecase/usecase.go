@@ -296,6 +296,13 @@ func (au *AdvtUsecase) GetRecomendations(advertId int64, count int64, userId int
 		return adverts, err
 	}
 
+	if userId != 0 {
+		adverts, err = au.advtRepository.SelectRecomendations(advertId, count, 0)
+		if len(adverts) != 0 {
+			return adverts, err
+		}
+	}
+
 	adverts, err = au.advtRepository.SelectDummyRecomendations(advertId, count)
 	return adverts, err
 }

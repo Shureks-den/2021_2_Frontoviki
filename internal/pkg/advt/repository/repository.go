@@ -688,8 +688,8 @@ func (ar *AdvtRepository) RegenerateRecomendations() error {
 	queryStr := `
 					INSERT INTO recomendations
 					SELECT 
-						t3.target_id,
-						t3.rec_id,
+						t3.target_id as target_id,
+						t3.rec_id as rec_id,
 						COUNT(*) as cnt
 					FROM (
 						SELECT 
@@ -700,8 +700,7 @@ func (ar *AdvtRepository) RegenerateRecomendations() error {
 						JOIN favorite as t2 ON t1.user_id = t2.user_id
 						WHERE t1.advert_id != t2.advert_id
 					) as t3
-					GROUP BY target_id, rec_id
-					ORDER BY cnt DESC, target_id, rec_id;
+					GROUP BY target_id, rec_id;
 	`
 	_, err = tx.ExecContext(context.Background(), queryStr)
 	if err != nil {
@@ -839,7 +838,7 @@ func (ar *AdvtRepository) SelectDummyRecomendations(advertId int64, count int64)
 						GROUP BY a.id, a.name, a.Description,  a.price, a.location, a.latitude, a.longitude, a.published_at, 
 							a.date_close, a.is_active, a.views, a.publisher_id, c.name, p.promo_level
 					) as t1 ON f1.advert_id = t1.advert_id
-					WHERE f1.advert_id != $1
+					WHERE f1.advert_id != $1 AND t1.is_active
 					ORDER BY f1.cnt DESC
 					LIMIT $2;
 	`
